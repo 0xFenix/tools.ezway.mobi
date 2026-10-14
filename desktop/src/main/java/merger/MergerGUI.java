@@ -18,7 +18,8 @@ public class MergerGUI extends JFrame {
   private final JSpinner copiesSpin = new JSpinner(new SpinnerNumberModel(6, 1, 25, 1));
   private final JTextArea logArea = new JTextArea(12, 60);
   private final JButton mergeBtn = new JButton("Bắt đầu ghép");
-  private final JComboBox<String> themeBox = new JComboBox<String>(new String[] {"Sáng", "Tối"});  private final JProgressBar progress = new JProgressBar();
+  private final JComboBox<String> themeBox = new JComboBox<String>(new String[] {"Sáng", "Tối"});
+  private final JProgressBar progress = new JProgressBar();
   private boolean dark = false;
 
   public MergerGUI() {
@@ -55,9 +56,10 @@ public class MergerGUI extends JFrame {
     main.add(hint, BorderLayout.CENTER);
     JLabel warn =
         new JLabel(
-            "<html><body style='width: 520px'><font color='#b26a00'>Lưu ý: không phải file jar nào cũng ghép được — "
-                + "file obfuscate quá nặng, thiếu preverify, mã hóa dị hoặc bytecode sửa ẩu "
-                + "có thể merge thành công những lỗi khi chuyển đổi list ghép.</font></body></html>");
+            "<html><body style='width: 520px'><font color='#b26a00'>Lưu ý: không phải file jar nào"
+                + " cũng ghép được — file obfuscate quá nặng, thiếu preverify, mã hóa dị hoặc"
+                + " bytecode sửa ẩu có thể merge thành công những lỗi khi chuyển đổi list"
+                + " ghép.</font></body></html>");
     warn.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
     main.add(warn, BorderLayout.SOUTH);
     add(main, BorderLayout.CENTER);
