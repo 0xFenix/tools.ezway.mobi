@@ -53,6 +53,11 @@ public class MergerGUI extends JFrame {
         JLabel hint = new JLabel("Kéo-thả file .jar vào bất kỳ đâu trong cửa sổ (hoặc bấm Chọn file...).");
         hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         main.add(hint, BorderLayout.CENTER);
+        JLabel warn = new JLabel("<html><font color='#b26a00'>Lưu ý: không phải file jar nào cũng ghép được — "
+            + "file obfuscate quá nặng, thiếu preverify, mã hóa dị hoặc bytecode sửa ẩu "
+            + "có thể merge lỗi.</font></html>");
+        warn.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
+        main.add(warn, BorderLayout.SOUTH);
         add(main, BorderLayout.CENTER);
 
         // ---- bottom: button + progress + log ----
