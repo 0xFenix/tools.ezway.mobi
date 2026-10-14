@@ -1,0 +1,7 @@
+services:
+  merger:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    # Đặt sau reverse-proxy (nginx / Cloudflare Tunnel) trên VPS.
