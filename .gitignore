@@ -1,6 +1,7 @@
 # build output
 merger/out/
 target/
+node_modules/
 # test outputs
 multi*.jar
 # third-party / game jars (not ours)
