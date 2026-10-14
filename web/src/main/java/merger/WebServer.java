@@ -22,8 +22,8 @@ import java.util.Map;
  *  - POST /api/merge   -> multipart (game=@file.jar, copies=N), returns merged jar
  */
 public class WebServer {
-    /** Max upload: ~50MB. */
-    static final long MAX_BYTES = 50L * 1024 * 1024;
+    /** Max upload: ~10MB (game J2ME hiếm khi quá 2MB). */
+    static final long MAX_BYTES = 10L * 1024 * 1024;
     /** Web cap: 25 copies (same as desktop). */
     static final int MAX_COPIES = 25;
     static final int DEFAULT_COPIES = 6;
@@ -45,7 +45,7 @@ public class WebServer {
 
     static void health(Context ctx) {
         ctx.json(Map.of("ok", true, "app", "j2me-merger",
-                "maxUploadMB", 50, "maxCopies", MAX_COPIES));
+                "maxUploadMB", 10, "maxCopies", MAX_COPIES));
     }
 
     static void merge(Context ctx) throws Exception {
@@ -55,7 +55,7 @@ public class WebServer {
             return;
         }
         if (game.size() > MAX_BYTES) {
-            ctx.status(413).json(Map.of("error", "file too large (max ~50MB)"));
+            ctx.status(413).json(Map.of("error", "file too large (max ~10MB)"));
             return;
         }
         int copies = DEFAULT_COPIES;
@@ -81,7 +81,7 @@ public class WebServer {
 
         byte[] data = readAll(game.content());
         if (data.length > MAX_BYTES) {
-            ctx.status(413).json(Map.of("error", "file too large (max ~50MB)"));
+            ctx.status(413).json(Map.of("error", "file too large (max ~10MB)"));
             return;
         }
 

@@ -99,7 +99,7 @@
       </aside>
 
       <footer class="mt-4 text-center text-xs text-mutetext font-mono">
-        merge-only · upload ≤ 50MB · copies ≤ 25 · <a class="underline hover:text-slate-300" href="/api/health">health</a>
+        merge-only · upload ≤ 10MB · copies ≤ 25 · <a class="underline hover:text-slate-300" href="/api/health">health</a>
       </footer>
     </main>
   </div>
