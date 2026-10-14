@@ -9,7 +9,7 @@ import java.util.zip.*;
 /**
  * J2ME multi-game merger CLI ported from Advanced-Menu MIDlet (classes.class_a).
  * Reuses original transformer bytecode (class_t, class_k, class_c, class_l) via classpath.
- * Run: java -cp Advanced-Menu.jar:merger.jar classes.MergerCLI --out multi.jar game1.jar game2.jar [options]
+ * Run: java -jar merger.jar --out multi.jar game1.jar game2.jar [options]
  */
 public class MergerCLI {
     /** Log sink; GUI redirects this to its log panel. */
@@ -153,32 +153,16 @@ public class MergerCLI {
             games.add(g);
         }
 
-        // Load runtime stub: embedded resources first (fat jar), else Advanced-Menu.jar рядом
-        byte[] libBytes = null, libsBytes = null, ssBytes = null, defaultIcon = null;
+        // Load runtime stub from embedded resources (fat jar)
+        byte[] libsBytes = null, ssBytes = null, defaultIcon = null;
         InputStream res = MergerCLI.class.getResourceAsStream("/MZMODlibs.jar");
-        if (res != null) {
-            LOG.println("[merger] runtime from embedded resources");
-            libsBytes = readAll(res); res.close();
-            res = MergerCLI.class.getResourceAsStream("/MZMODSSlib.jar");
-            ssBytes = readAll(res); res.close();
-            res = MergerCLI.class.getResourceAsStream("/MZMODlib.jar");
-            if (res != null) { libBytes = readAll(res); res.close(); }
-            res = MergerCLI.class.getResourceAsStream("/icon.png");
-            if (res != null) { defaultIcon = readAll(res); res.close(); }
-        } else {
-            String[] advCandidates = new String[]{"Advanced-Menu.jar", "C:\\Users\\Noverify\\Desktop\\j2me-embedder\\Advanced-Menu.jar"};
-            ZipFile adv = null;
-            for (String c : advCandidates) {
-                try { adv = new ZipFile(c); LOG.println("[merger] runtime from " + c); break; }
-                catch (Exception e) {}
-            }
-            if (adv == null) throw new IOException("Cannot find runtime stub (embed resources or Advanced-Menu.jar)");
-            libBytes = readAll(adv.getInputStream(adv.getEntry("MZMODlib.jar")));
-            libsBytes = readAll(adv.getInputStream(adv.getEntry("MZMODlibs.jar")));
-            ssBytes = readAll(adv.getInputStream(adv.getEntry("MZMODSSlib.jar")));
-            try { defaultIcon = readAll(adv.getInputStream(adv.getEntry("icon.png"))); } catch (Exception e) {}
-            adv.close();
-        }
+        if (res == null) throw new IOException("Missing embedded runtime: /MZMODlibs.jar");
+        LOG.println("[merger] runtime from embedded resources");
+        libsBytes = readAll(res); res.close();
+        res = MergerCLI.class.getResourceAsStream("/MZMODSSlib.jar");
+        ssBytes = readAll(res); res.close();
+        res = MergerCLI.class.getResourceAsStream("/icon.png");
+        if (res != null) { defaultIcon = readAll(res); res.close(); }
         Map<String, byte[]> libsMap = readNestedJar(libsBytes);
         Map<String, byte[]> ssMap = readNestedJar(ssBytes);
 
