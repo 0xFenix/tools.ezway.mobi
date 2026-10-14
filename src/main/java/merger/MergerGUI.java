@@ -114,7 +114,7 @@ public class MergerGUI extends JFrame {
                     e.dropComplete(false);
                 }
             }
-        }), true);
+        }));
 
         pack();
         setMinimumSize(new Dimension(620, 520));
