@@ -13,16 +13,18 @@ mvn package
 Jar thành phẩm: `target/merger.jar` — vừa là CLI vừa là GUI (không cần kèm file nào khác).
 
 ```bat
-java -jar target/merger.jar                 :: mở GUI: chỉ cần Add game + Merge
+java -jar target/merger.jar                 :: mở GUI: chọn 1 file game + Copies + Merge
 java -jar target/merger.jar --gui           :: mở GUI
-java -jar target/merger.jar --out multi.jar --copies 6 game1.jar game2.jar
+java -jar target/merger.jar --out Client-Avatar-menu-x6.jar --copies 6 Client-Avatar.jar
 ```
 
-GUI tự động: mỗi game nhân thành **6 bản**, file gộp lưu cùng thư mục
-với game đầu tiên (`<ten-game>-menu.jar`, tự tránh trùng tên).
+GUI tự động: file gộp lưu cùng thư mục `<tên-game>-menu-xN.jar`
+(N = số copies, trùng tên thì tự thêm `-2`, `-3`...).
 
-Options CLI: `--out`, `--copies 1..25` (mặc định 10, theo tool gốc),
-`--name`, `--vendor`, `--display`, `--icon icon.png`.
+Manifest file gộp tự lấy từ jar input, không cần nhập:
+`MIDlet-Name = <tên game>-xN`, `Vendor = avt.ezway.mobi`,
+menu title = `<tên game> Adv Menu`.
+Options CLI `--name/--vendor/--display/--icon` chỉ dùng khi muốn ghi đè.
 
 ## Chạy game đã gộp
 

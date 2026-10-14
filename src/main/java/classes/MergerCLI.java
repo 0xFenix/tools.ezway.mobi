@@ -129,7 +129,7 @@ public class MergerCLI {
     }
 
     public static void main(String[] args) throws Exception {
-        String out = null, midName = "Multi Menu", vendor = "MZMOD", display = "Multi Menu", iconPath = null;
+        String out = null, midName = null, vendor = null, display = null, iconPath = null;
         int copies = 1;
         List<String> inputs = new ArrayList<String>();
         for (int i = 0; i < args.length; i++) {
@@ -152,6 +152,15 @@ public class MergerCLI {
             LOG.println("[merger] loaded " + p + " MIDlet-1=" + g.manifest.getMainAttributes().getValue("MIDlet-1"));
             games.add(g);
         }
+
+        // Auto manifest: derive from first input jar unless overridden by flags
+        String inName = games.get(0).manifest.getMainAttributes().getValue("MIDlet-Name");
+        if (inName == null || inName.trim().isEmpty()) inName = "Multi Menu";
+        inName = inName.trim();
+        if (midName == null) midName = inName + "-x" + copies;
+        if (vendor == null) vendor = "avt.ezway.mobi";
+        if (display == null) display = inName + " Adv Menu";
+        LOG.println("[merger] manifest: name=" + midName + " vendor=" + vendor + " display=" + display);
 
         // Load runtime stub from embedded resources (fat jar)
         byte[] libsBytes = null, ssBytes = null, defaultIcon = null;
@@ -281,7 +290,8 @@ public class MergerCLI {
     }
 
     static void usage() {
-        LOG.println("Usage: java -jar merger.jar --out multi.jar [--copies N] game1.jar [game2.jar ...] [--name N --vendor V --display D --icon icon.png]");
+        LOG.println("Usage: java -jar merger.jar --out <game>-menu-xN.jar [--copies N] game.jar [game2.jar ...]");
+        LOG.println("       --name/--vendor/--display/--icon override auto manifest (default: derived from input jar)");
         LOG.println("       java -jar merger.jar  (no args: open GUI)");
     }
 }

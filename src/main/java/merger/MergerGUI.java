@@ -14,8 +14,7 @@ import java.util.List;
 
 /** Swing GUI for the J2ME multi-game merger. Shares the same core as the CLI. */
 public class MergerGUI extends JFrame {
-    private final DefaultListModel<String> inputModel = new DefaultListModel<String>();
-    private final JList<String> inputList = new JList<String>(inputModel);
+    private final JTextField fileField = new JTextField(30);
     private final JSpinner copiesSpin = new JSpinner(new SpinnerNumberModel(6, 1, 25, 1));
     private final JTextArea logArea = new JTextArea(12, 60);
     private final JButton mergeBtn = new JButton("Merge");
@@ -32,7 +31,7 @@ public class MergerGUI extends JFrame {
         JToolBar bar = new JToolBar();
         bar.setFloatable(false);
         bar.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
-        bar.add(new JLabel("Game jars (mỗi file nhân thành N bản theo Copies)"));
+        bar.add(new JLabel("Chọn 1 file game jar để gộp"));
         bar.add(Box.createHorizontalGlue());
         bar.add(new JLabel("Giao diện: "));
         bar.add(themeBox);
@@ -42,9 +41,9 @@ public class MergerGUI extends JFrame {
         JPanel main = new JPanel(new BorderLayout(0, 8));
         main.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
 
-        inputList.setVisibleRowCount(5);
-        inputList.setToolTipText("Kéo-thả file .jar vào đây");
-        inputList.setTransferHandler(new TransferHandler() {
+        fileField.setEditable(false);
+        fileField.setToolTipText("Kéo-thả file .jar vào đây");
+        fileField.setTransferHandler(new TransferHandler() {
             public boolean canImport(TransferSupport s) {
                 return s.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
             }
@@ -55,26 +54,23 @@ public class MergerGUI extends JFrame {
                         (java.util.List<java.io.File>) s.getTransferable()
                             .getTransferData(DataFlavor.javaFileListFlavor);
                     for (java.io.File f : files)
-                        if (f.getName().toLowerCase().endsWith(".jar"))
-                            inputModel.addElement(f.getAbsolutePath());
-                    return true;
+                        if (f.getName().toLowerCase().endsWith(".jar")) {
+                            fileField.setText(f.getAbsolutePath());
+                            return true;
+                        }
+                    return false;
                 } catch (Exception ex) {
                     return false;
                 }
             }
         });
-        JScrollPane listScroll = new JScrollPane(inputList);
-        JPanel ibtns = new JPanel(new GridLayout(3, 1, 4, 4));
-        JButton add = new JButton("Add...");
-        JButton del = new JButton("Remove");
-        JButton clr = new JButton("Clear");
-        ibtns.add(add); ibtns.add(del); ibtns.add(clr);
-        JPanel listRow = new JPanel(new BorderLayout(6, 0));
-        listRow.add(listScroll, BorderLayout.CENTER);
-        listRow.add(ibtns, BorderLayout.EAST);
-        main.add(listRow, BorderLayout.NORTH);
+        JButton browse = new JButton("Chọn file...");
+        JPanel fileRow = new JPanel(new BorderLayout(6, 0));
+        fileRow.add(fileField, BorderLayout.CENTER);
+        fileRow.add(browse, BorderLayout.EAST);
+        main.add(fileRow, BorderLayout.NORTH);
 
-        JLabel hint = new JLabel("Kéo-thả file .jar vào danh sách (hoặc Add...). File gộp lưu cùng thư mục với game đầu tiên.");
+        JLabel hint = new JLabel("File gộp lưu cùng thư mục: <tên-game>-menu-xN.jar (N = số copies).");
         hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         main.add(hint, BorderLayout.CENTER);
         add(main, BorderLayout.CENTER);
@@ -99,17 +95,12 @@ public class MergerGUI extends JFrame {
 
         // ---- actions ----
         themeBox.addActionListener(e -> applyTheme(themeBox.getSelectedIndex() == 1));
-        add.addActionListener(e -> {
+        browse.addActionListener(e -> {
             JFileChooser fc = new JFileChooser(".");
-            fc.setMultiSelectionEnabled(true);
             fc.setFileFilter(new FileNameExtensionFilter("J2ME jars", "jar"));
             if (fc.showOpenDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION)
-                for (java.io.File f : fc.getSelectedFiles()) inputModel.addElement(f.getAbsolutePath());
+                fileField.setText(fc.getSelectedFile().getAbsolutePath());
         });
-        del.addActionListener(e -> {
-            for (String s : inputList.getSelectedValuesList()) inputModel.removeElement(s);
-        });
-        clr.addActionListener(e -> inputModel.clear());
         mergeBtn.addActionListener(e -> doMerge());
 
         pack();
@@ -133,15 +124,16 @@ public class MergerGUI extends JFrame {
     }
 
     private void doMerge() {
-        if (inputModel.isEmpty()) { log("Add at least one game jar first."); return; }
-        final String first = inputModel.get(0);
-        final java.io.File firstFile = new java.io.File(first);
-        String base = firstFile.getName();
+        final String in = fileField.getText().trim();
+        if (in.isEmpty()) { log("Chọn 1 file game jar trước."); return; }
+        final int copies = (Integer) copiesSpin.getValue();
+        final java.io.File inFile = new java.io.File(in);
+        String base = inFile.getName();
         if (base.toLowerCase().endsWith(".jar")) base = base.substring(0, base.length() - 4);
-        java.io.File out = new java.io.File(firstFile.getParent(), base + "-menu.jar");
+        java.io.File out = new java.io.File(inFile.getParent(), base + "-menu-x" + copies + ".jar");
         int n = 2;
         while (out.exists()) {
-            out = new java.io.File(firstFile.getParent(), base + "-menu-" + (n++) + ".jar");
+            out = new java.io.File(inFile.getParent(), base + "-menu-x" + copies + "-" + (n++) + ".jar");
         }
         final String outPath = out.getAbsolutePath();
         mergeBtn.setEnabled(false);
@@ -150,8 +142,8 @@ public class MergerGUI extends JFrame {
         logArea.setText("");
         final List<String> args = new ArrayList<String>();
         args.add("--out"); args.add(outPath);
-        args.add("--copies"); args.add(copiesSpin.getValue().toString());
-        for (int i = 0; i < inputModel.size(); i++) args.add(inputModel.get(i));
+        args.add("--copies"); args.add(String.valueOf(copies));
+        args.add(in);
 
         // Redirect core logs into the GUI log panel
         final PrintStream guiLog = new PrintStream(new OutputStream() {
