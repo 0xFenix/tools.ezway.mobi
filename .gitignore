@@ -1,0 +1,10 @@
+# build output
+merger/out/
+# test outputs
+multi*.jar
+# third-party / game jars (not ours)
+Advanced-Menu.jar
+Client-Avatar.jar
+Microemulator.jar
+# local tool config
+opencode.json
