@@ -7,6 +7,7 @@ import com.formdev.flatlaf.FlatLightLaf;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.awt.datatransfer.DataFlavor;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.List;
 public class MergerGUI extends JFrame {
     private final DefaultListModel<String> inputModel = new DefaultListModel<String>();
     private final JList<String> inputList = new JList<String>(inputModel);
+    private final JSpinner copiesSpin = new JSpinner(new SpinnerNumberModel(6, 1, 25, 1));
     private final JTextArea logArea = new JTextArea(12, 60);
     private final JButton mergeBtn = new JButton("Merge");
     private final JComboBox<String> themeBox = new JComboBox<String>(new String[]{"Sáng", "Tối"});
@@ -41,6 +43,26 @@ public class MergerGUI extends JFrame {
         main.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
 
         inputList.setVisibleRowCount(5);
+        inputList.setToolTipText("Kéo-thả file .jar vào đây");
+        inputList.setTransferHandler(new TransferHandler() {
+            public boolean canImport(TransferSupport s) {
+                return s.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
+            }
+            @SuppressWarnings("unchecked")
+            public boolean importData(TransferSupport s) {
+                try {
+                    java.util.List<java.io.File> files =
+                        (java.util.List<java.io.File>) s.getTransferable()
+                            .getTransferData(DataFlavor.javaFileListFlavor);
+                    for (java.io.File f : files)
+                        if (f.getName().toLowerCase().endsWith(".jar"))
+                            inputModel.addElement(f.getAbsolutePath());
+                    return true;
+                } catch (Exception ex) {
+                    return false;
+                }
+            }
+        });
         JScrollPane listScroll = new JScrollPane(inputList);
         JPanel ibtns = new JPanel(new GridLayout(3, 1, 4, 4));
         JButton add = new JButton("Add...");
@@ -52,7 +74,7 @@ public class MergerGUI extends JFrame {
         listRow.add(ibtns, BorderLayout.EAST);
         main.add(listRow, BorderLayout.NORTH);
 
-        JLabel hint = new JLabel("Mỗi game được nhân thành 6 bản, file gộp lưu cùng thư mục với game đầu tiên.");
+        JLabel hint = new JLabel("Kéo-thả file .jar vào danh sách (hoặc Add...). File gộp lưu cùng thư mục với game đầu tiên.");
         hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         main.add(hint, BorderLayout.CENTER);
         add(main, BorderLayout.CENTER);
@@ -61,6 +83,9 @@ public class MergerGUI extends JFrame {
         JPanel bottom = new JPanel(new BorderLayout(0, 6));
         bottom.setBorder(BorderFactory.createEmptyBorder(4, 10, 10, 10));
         JPanel bbtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        bbtns.add(new JLabel("Copies (bản/game):"));
+        copiesSpin.setPreferredSize(new Dimension(64, copiesSpin.getPreferredSize().height));
+        bbtns.add(copiesSpin);
         bbtns.add(mergeBtn);
         bbtns.add(progress);
         progress.setVisible(false);
@@ -125,7 +150,7 @@ public class MergerGUI extends JFrame {
         logArea.setText("");
         final List<String> args = new ArrayList<String>();
         args.add("--out"); args.add(outPath);
-        args.add("--copies"); args.add("6");
+        args.add("--copies"); args.add(copiesSpin.getValue().toString());
         for (int i = 0; i < inputModel.size(); i++) args.add(inputModel.get(i));
 
         // Redirect core logs into the GUI log panel
