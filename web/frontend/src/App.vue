@@ -52,7 +52,8 @@
           <div class="flex items-center gap-2">
             <button type="button" @click="step(-1)" :disabled="copies <= 1" aria-label="Giảm copies"
               class="min-h-[44px] min-w-[44px] rounded-lg border border-line text-lg leading-none disabled:opacity-30 hover:border-accent transition-colors duration-200">−</button>
-            <input id="copies" v-model.number="copies" type="number" min="1" max="10"
+            <input id="copies" v-model="copiesText" type="text" inputmode="numeric" autocomplete="off" spellcheck="false"
+              @input="onCopiesInput" @blur="clampCopies" @keydown.enter="clampCopies"
               class="w-16 min-h-[44px] text-center bg-mutedbox border border-line rounded-lg font-mono focus:border-accent">
             <button type="button" @click="step(1)" :disabled="copies >= 10" aria-label="Tăng copies"
               class="min-h-[44px] min-w-[44px] rounded-lg border border-line text-lg leading-none disabled:opacity-30 hover:border-accent transition-colors duration-200">+</button>
@@ -113,6 +114,7 @@ export default {
     return {
       file: null,
       copies: 6,
+      copiesText: '6',
       busy: false,
       hint: '',
       error: '',
@@ -151,7 +153,18 @@ export default {
       this.file = null; this.error = ''; this.done = ''; this.hint = ''
       this.revokeBlob()
     },
-    step(d) { this.copies = Math.max(1, Math.min(MAX_COPIES, (parseInt(this.copies, 10) || 6) + d)) },
+    step(d) { this.setCopies((parseInt(this.copiesText, 10) || 6) + d) },
+    onCopiesInput() {
+      this.copiesText = this.copiesText.replace(/[^0-9]/g, '').slice(0, 2)
+      if (this.copiesText !== '') this.setCopies(parseInt(this.copiesText, 10))
+    },
+    clampCopies() { this.setCopies(parseInt(this.copiesText, 10)) },
+    setCopies(n) {
+      if (isNaN(n)) n = 6
+      n = Math.max(1, Math.min(MAX_COPIES, n))
+      this.copies = n
+      this.copiesText = String(n)
+    },
     formatSize(n) {
       if (n < 1024) return n + ' B'
       if (n < 1048576) return (n / 1024).toFixed(1) + ' KB'
@@ -171,7 +184,7 @@ export default {
       if (!this.file || this.busy) return
       this.busy = true; this.error = ''; this.done = ''
       const copies = this.clampedCopies
-      this.copies = copies
+      this.setCopies(copies)
       this.hint = 'Đang ghép ' + this.file.name + ' x' + copies + ' ...'
       try {
         const fd = new FormData()
