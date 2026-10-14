@@ -1,5 +1,6 @@
 # build output
 merger/out/
+target/
 # test outputs
 multi*.jar
 # third-party / game jars (not ours)

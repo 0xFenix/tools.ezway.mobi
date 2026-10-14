@@ -1,11 +1,12 @@
 package merger;
 
 import classes.MergerCLI;
+import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,33 +22,49 @@ public class MergerGUI extends JFrame {
     private final JTextField displayField = new JTextField("Multi Menu", 16);
     private final JTextField iconField = new JTextField(20);
     private final JTextField emuField = new JTextField("Microemulator.jar", 20);
-    private final JTextArea logArea = new JTextArea(14, 60);
+    private final JTextArea logArea = new JTextArea(12, 60);
     private final JButton mergeBtn = new JButton("Merge");
     private final JButton runBtn = new JButton("Run in Microemulator");
+    private final JComboBox<String> themeBox = new JComboBox<String>(new String[]{"Sáng", "Tối"});
+    private final JProgressBar progress = new JProgressBar();
     private String lastOut = null;
+    private boolean dark = false;
 
     public MergerGUI() {
         super("J2ME Merger — multi-game menu builder");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setLayout(new BorderLayout(8, 8));
+        setLayout(new BorderLayout(0, 0));
 
-        // ---- inputs ----
-        JPanel top = new JPanel(new BorderLayout(6, 6));
+        // ---- toolbar ----
+        JToolBar bar = new JToolBar();
+        bar.setFloatable(false);
+        bar.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
+        bar.add(new JLabel("Game jars (mỗi file nhân thành N bản theo Copies)"));
+        bar.add(Box.createHorizontalGlue());
+        bar.add(new JLabel("Giao diện: "));
+        bar.add(themeBox);
+        add(bar, BorderLayout.NORTH);
+
+        // ---- main panel ----
+        JPanel main = new JPanel(new BorderLayout(0, 8));
+        main.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+
         inputList.setVisibleRowCount(5);
-        top.add(new JLabel("Game jars (mỗi file nhân thành N bản theo Copies):"), BorderLayout.NORTH);
-        top.add(new JScrollPane(inputList), BorderLayout.CENTER);
+        JScrollPane listScroll = new JScrollPane(inputList);
         JPanel ibtns = new JPanel(new GridLayout(3, 1, 4, 4));
         JButton add = new JButton("Add...");
         JButton del = new JButton("Remove");
         JButton clr = new JButton("Clear");
         ibtns.add(add); ibtns.add(del); ibtns.add(clr);
-        top.add(ibtns, BorderLayout.EAST);
-        add(top, BorderLayout.NORTH);
+        JPanel listRow = new JPanel(new BorderLayout(6, 0));
+        listRow.add(listScroll, BorderLayout.CENTER);
+        listRow.add(ibtns, BorderLayout.EAST);
+        main.add(listRow, BorderLayout.NORTH);
 
         // ---- options ----
         JPanel opts = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
-        c.insets = new Insets(2, 4, 2, 4);
+        c.insets = new Insets(3, 4, 3, 4);
         c.anchor = GridBagConstraints.WEST;
         c.fill = GridBagConstraints.HORIZONTAL;
         int r = 0;
@@ -71,74 +88,81 @@ public class MergerGUI extends JFrame {
         c.gridx = 1; opts.add(emuField, c);
         c.gridx = 2; JButton browseEmu = new JButton("Browse...");
         opts.add(browseEmu, c);
-        add(opts, BorderLayout.CENTER);
+        main.add(opts, BorderLayout.CENTER);
+        add(main, BorderLayout.CENTER);
 
-        // ---- bottom: buttons + log ----
-        JPanel bottom = new JPanel(new BorderLayout(6, 6));
-        JPanel bbtns = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        // ---- bottom: buttons + progress + log ----
+        JPanel bottom = new JPanel(new BorderLayout(0, 6));
+        bottom.setBorder(BorderFactory.createEmptyBorder(4, 10, 10, 10));
+        JPanel bbtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         bbtns.add(mergeBtn);
         runBtn.setEnabled(false);
         bbtns.add(runBtn);
+        bbtns.add(progress);
+        progress.setVisible(false);
+        progress.setPreferredSize(new Dimension(160, 16));
         bottom.add(bbtns, BorderLayout.NORTH);
         logArea.setEditable(false);
         logArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         bottom.add(new JScrollPane(logArea), BorderLayout.CENTER);
         add(bottom, BorderLayout.SOUTH);
+        getRootPane().setDefaultButton(mergeBtn);
 
         // ---- actions ----
-        add.addActionListener(new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fc = new JFileChooser(".");
-                fc.setMultiSelectionEnabled(true);
-                fc.setFileFilter(new FileNameExtensionFilter("J2ME jars", "jar"));
-                if (fc.showOpenDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION)
-                    for (java.io.File f : fc.getSelectedFiles()) inputModel.addElement(f.getAbsolutePath());
+        themeBox.addActionListener(e -> applyTheme(themeBox.getSelectedIndex() == 1));
+        add.addActionListener(e -> {
+            JFileChooser fc = new JFileChooser(".");
+            fc.setMultiSelectionEnabled(true);
+            fc.setFileFilter(new FileNameExtensionFilter("J2ME jars", "jar"));
+            if (fc.showOpenDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION)
+                for (java.io.File f : fc.getSelectedFiles()) inputModel.addElement(f.getAbsolutePath());
+        });
+        del.addActionListener(e -> {
+            for (String s : inputList.getSelectedValuesList()) inputModel.removeElement(s);
+        });
+        clr.addActionListener(e -> inputModel.clear());
+        browseOut.addActionListener(e -> {
+            JFileChooser fc = new JFileChooser(".");
+            fc.setFileFilter(new FileNameExtensionFilter("JAR", "jar"));
+            if (fc.showSaveDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION) {
+                String p = fc.getSelectedFile().getAbsolutePath();
+                if (!p.toLowerCase().endsWith(".jar")) p += ".jar";
+                outField.setText(p);
             }
         });
-        del.addActionListener(new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                for (String s : inputList.getSelectedValuesList()) inputModel.removeElement(s);
-            }
+        browseIcon.addActionListener(e -> {
+            JFileChooser fc = new JFileChooser(".");
+            fc.setFileFilter(new FileNameExtensionFilter("PNG", "png"));
+            if (fc.showOpenDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION)
+                iconField.setText(fc.getSelectedFile().getAbsolutePath());
         });
-        clr.addActionListener(new AbstractAction() {
-            public void actionPerformed(ActionEvent e) { inputModel.clear(); }
+        browseEmu.addActionListener(e -> {
+            JFileChooser fc = new JFileChooser(".");
+            fc.setFileFilter(new FileNameExtensionFilter("JAR", "jar"));
+            if (fc.showOpenDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION)
+                emuField.setText(fc.getSelectedFile().getAbsolutePath());
         });
-        browseOut.addActionListener(new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fc = new JFileChooser(".");
-                fc.setFileFilter(new FileNameExtensionFilter("JAR", "jar"));
-                if (fc.showSaveDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION) {
-                    String p = fc.getSelectedFile().getAbsolutePath();
-                    if (!p.toLowerCase().endsWith(".jar")) p += ".jar";
-                    outField.setText(p);
-                }
-            }
-        });
-        browseIcon.addActionListener(new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fc = new JFileChooser(".");
-                fc.setFileFilter(new FileNameExtensionFilter("PNG", "png"));
-                if (fc.showOpenDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION)
-                    iconField.setText(fc.getSelectedFile().getAbsolutePath());
-            }
-        });
-        browseEmu.addActionListener(new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fc = new JFileChooser(".");
-                fc.setFileFilter(new FileNameExtensionFilter("JAR", "jar"));
-                if (fc.showOpenDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION)
-                    emuField.setText(fc.getSelectedFile().getAbsolutePath());
-            }
-        });
-        mergeBtn.addActionListener(new AbstractAction() {
-            public void actionPerformed(ActionEvent e) { doMerge(); }
-        });
-        runBtn.addActionListener(new AbstractAction() {
-            public void actionPerformed(ActionEvent e) { doRun(); }
-        });
+        mergeBtn.addActionListener(e -> doMerge());
+        runBtn.addActionListener(e -> doRun());
 
         pack();
+        setMinimumSize(new Dimension(640, 620));
         setLocationRelativeTo(null);
+    }
+
+    private void applyTheme(boolean toDark) {
+        if (toDark == dark) return;
+        dark = toDark;
+        try {
+            if (dark) UIManager.setLookAndFeel(new FlatDarkLaf());
+            else UIManager.setLookAndFeel(new FlatLightLaf());
+            SwingUtilities.updateComponentTreeUI(this);
+            pack();
+        } catch (Exception ex) {
+            log("Không đổi được theme: " + ex.getMessage());
+            dark = !toDark;
+            themeBox.setSelectedIndex(dark ? 1 : 0);
+        }
     }
 
     private void doMerge() {
@@ -146,6 +170,8 @@ public class MergerGUI extends JFrame {
         if (outField.getText().trim().isEmpty()) { log("Choose an output jar first."); return; }
         mergeBtn.setEnabled(false);
         runBtn.setEnabled(false);
+        progress.setVisible(true);
+        progress.setIndeterminate(true);
         logArea.setText("");
         final List<String> args = new ArrayList<String>();
         args.add("--out"); args.add(outField.getText().trim());
@@ -163,9 +189,7 @@ public class MergerGUI extends JFrame {
                 if (b == '\n') {
                     final String line = sb.toString();
                     sb.setLength(0);
-                    SwingUtilities.invokeLater(new Runnable() {
-                        public void run() { logArea.append(line + "\n"); }
-                    });
+                    SwingUtilities.invokeLater(() -> logArea.append(line + "\n"));
                 } else sb.append((char) b);
             }
         }, true);
@@ -185,6 +209,7 @@ public class MergerGUI extends JFrame {
             }
             protected void done() {
                 mergeBtn.setEnabled(true);
+                progress.setVisible(false);
                 try {
                     if (get() == 0) {
                         lastOut = outField.getText().trim();
@@ -207,10 +232,8 @@ public class MergerGUI extends JFrame {
     private void log(String s) { logArea.append(s + "\n"); }
 
     public static void launch() {
-        try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); }
+        try { UIManager.setLookAndFeel(new FlatLightLaf()); }
         catch (Exception ignored) {}
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() { new MergerGUI().setVisible(true); }
-        });
+        SwingUtilities.invokeLater(() -> new MergerGUI().setVisible(true));
     }
 }

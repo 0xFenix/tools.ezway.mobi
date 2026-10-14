@@ -1,19 +1,21 @@
-# j2me-embedder
+# j2me-menu-merger
 
 Gộp nhiều game J2ME (.jar) thành một menu duy nhất, chạy trên PC qua Microemulator.
 
-## File chính
-
-- `merger.jar` — core duy nhất: vừa là CLI vừa là GUI (không cần kèm file nào khác).
-
 ## Chạy
 
-Double-click `merger.jar`, hoặc:
+Build một lần duy nhất:
 
 ```bat
-java -jar merger.jar                 :: mở GUI
-java -jar merger.jar --gui           :: mở GUI
-java -jar merger.jar --out multi.jar --copies 6 game1.jar game2.jar
+mvn package
+```
+
+Jar thành phẩm: `target/merger.jar` — vừa là CLI vừa là GUI (không cần kèm file nào khác).
+
+```bat
+java -jar target/merger.jar                 :: mở GUI
+java -jar target/merger.jar --gui           :: mở GUI
+java -jar target/merger.jar --out multi.jar --copies 6 game1.jar game2.jar
 ```
 
 Options CLI: `--out`, `--copies 1..25` (mặc định 10, theo tool gốc),
@@ -27,16 +29,21 @@ java -jar Microemulator.jar multi.jar
 
 ## Source
 
-- `merger/src/classes/MergerCLI.java` — logic gộp (package `classes` để dùng
-  chung transformer gốc `class_t`/`class_k`/`class_c` nhúng trong jar).
-- `merger/src/merger/Main.java` — router CLI/GUI.
-- `merger/src/merger/MergerGUI.java` — giao diện Swing.
+- `src/main/java/classes/MergerCLI.java` — logic gộp (package `classes` để dùng
+  chung transformer gốc `class_t`/`class_k`/`class_c`).
+- `src/main/java/merger/Main.java` — router CLI/GUI.
+- `src/main/java/merger/MergerGUI.java` — giao diện Swing + FlatLaf (sáng/tối).
+- `src/main/resources/` — runtime nhúng (`MZMOD*.jar`, `icon.png`).
+- `libs/transformer.jar` — bytecode transformer gốc (tách từ Advanced-Menu.jar,
+  không có trên Maven Central nên để trong repo, chỉ dùng lúc compile + đóng gói).
 
-## Build lại merger.jar
+## Publish GitHub
+
+Đổi `groupId`/`url` trong `pom.xml` sang tài khoản của bạn, rồi:
 
 ```bat
-build.bat
+git remote add origin https://github.com/<user>/j2me-menu-merger.git
+git push -u origin master
 ```
 
-(cần `Advanced-Menu.jar` đặt cùng thư mục — script lấy transformer
-`classes/*`, `MZMOD*.jar`, `icon.png` từ đó rồi đóng gói fat jar.)
+File đính kèm release: `target/merger.jar`.
