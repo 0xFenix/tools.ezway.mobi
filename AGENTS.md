@@ -65,6 +65,9 @@ cd web/frontend && npm run dev   :: dev UI (proxy /api → :8080)
 ## Git
 
 - Cây luôn sạch (`git status --porcelain` rỗng) trước khi báo xong.
-- Commit nhỏ theo bước, message tiếng Anh ngắn.
+- Commit nhỏ theo bước, message tiếng Anh ngắn, theo **Conventional Commits**
+  (`feat/fix/docs/chore/refactor/build/revert: ...` viết thường, hook
+  commit-msg tự kiểm tra — commit sai bị từ chối).
+- Lần đầu clone: chạy `npm install` ở root để cài hook (Husky) + commitlint.
 - Không commit: `target/`, `node_modules/`, `*-menu*.jar`,
   `Client-Avatar.jar`, `Microemulator.jar`, `*.log`, file screenshot test.
