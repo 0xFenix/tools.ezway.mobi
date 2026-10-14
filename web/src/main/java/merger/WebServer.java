@@ -35,9 +35,9 @@ public class WebServer {
             config.jetty.multipartConfig.maxTotalRequestSize(MAX_BYTES + 1024 * 1024, SizeUnit.BYTES);
             config.staticFiles.add("/web", Location.CLASSPATH);
             config.spaRoot.addFile("/", "/web/index.html");
+            config.routes.get("/api/health", WebServer::health);
+            config.routes.post("/api/merge", WebServer::merge);
         });
-        app.get("/api/health", WebServer::health);
-        app.post("/api/merge", WebServer::merge);
         app.start(port);
         System.out.println("[web] listening on http://0.0.0.0:" + port);
         return app;

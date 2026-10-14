@@ -12,7 +12,7 @@ mvn package
 
 Jar thành phẩm:
 - `desktop/target/merger.jar` — CLI + GUI (Java 8 trở lên, không cần kèm file nào khác).
-- `web/target/merger-web.jar` — backend web Javalin (Java 11 trở lên, xem `DEPLOY.md`).
+- `web/target/merger-web.jar` — backend web Javalin (Java 17 trở lên, xem `DEPLOY.md`).
 
 ```bat
 java -jar desktop/target/merger.jar                 :: mở GUI: chọn 1 file game + Copies + Merge
@@ -44,7 +44,7 @@ java -jar Microemulator.jar multi.jar
 - `desktop/src/main/java/merger/` — `Main` (router CLI/GUI) + `MergerGUI`
   (Swing + FlatLaf sáng/tối). Java 8.
 - `web/src/main/java/merger/` — `WebMain` + `WebServer` (Javalin:
-  `GET /`, `GET /api/health`, `POST /api/merge`). Java 11.
+  `GET /`, `GET /api/health`, `POST /api/merge`). Java 17.
 - `web/src/main/resources/web/index.html` — frontend một trang.
 - `libs/transformer.jar` — bytecode transformer gốc (tách từ Advanced-Menu.jar,
   không có trên Maven Central nên để trong repo, chỉ dùng lúc compile).

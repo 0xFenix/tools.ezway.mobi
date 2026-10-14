@@ -11,7 +11,7 @@
 
     <name>J2ME Menu Merger (parent)</name>
     <description>Gop nhieu game J2ME (.jar) thanh mot menu duy nhat. core = logic merge
-        (Java 8); desktop = CLI + Swing GUI (Java 8); web = Javalin backend (Java 11+).</description>
+        (Java 8); desktop = CLI + Swing GUI (Java 8); web = Javalin backend (Java 17).</description>
     <url>https://github.com/j2memerger/j2me-menu-merger</url>
 
     <modules>
@@ -23,8 +23,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <flatlaf.version>3.7.2</flatlaf.version>
-        <javalin.version>6.7.0</javalin.version>
-        <slf4j.version>2.0.17</slf4j.version>
+        <javalin.version>7.2.3</javalin.version>
+        <slf4j.version>2.0.18</slf4j.version>
         <shade.version>3.6.0</shade.version>
     </properties>
 </project>

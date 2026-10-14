@@ -1,6 +1,6 @@
 # Deploy bản web lên Oracle VPS
 
-Bản web là `merger-web.jar` (module `web/`, Javalin, Java 11+) —
+Bản web là `merger-web.jar` (module `web/`, Javalin 7, Java 17) —
 build riêng, desktop (`merger.jar`, Java 8) không ảnh hưởng.
 
 ## 1. Chạy thử local
