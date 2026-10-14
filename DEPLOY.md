@@ -1,12 +1,13 @@
 # Deploy bản web lên Oracle VPS
 
-Tool chạy bằng chính `merger.jar`, không cần build riêng.
+Bản web là `merger-web.jar` (module `web/`, Javalin, Java 11+) —
+build riêng, desktop (`merger.jar`, Java 8) không ảnh hưởng.
 
 ## 1. Chạy thử local
 
 ```bat
 mvn -DskipTests package
-java -jar target/merger.jar --serve --port 8080
+java -jar web/target/merger-web.jar --port 8080
 ```
 
 Mở `http://localhost:8080`, upload `Client-Avatar.jar`, Copies 6, Merge

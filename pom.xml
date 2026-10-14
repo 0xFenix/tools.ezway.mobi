@@ -5,60 +5,26 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>dev.j2memerger</groupId>
-    <artifactId>j2me-menu-merger</artifactId>
+    <artifactId>j2me-menu-merger-parent</artifactId>
     <version>1.0.0</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
-    <name>J2ME Menu Merger</name>
-    <description>Gop nhieu game J2ME (.jar) thanh mot menu duy nhat, chay tren PC qua Microemulator.</description>
+    <name>J2ME Menu Merger (parent)</name>
+    <description>Gop nhieu game J2ME (.jar) thanh mot menu duy nhat. core = logic merge
+        (Java 8); desktop = CLI + Swing GUI (Java 8); web = Javalin backend (Java 11+).</description>
     <url>https://github.com/j2memerger/j2me-menu-merger</url>
+
+    <modules>
+        <module>core</module>
+        <module>desktop</module>
+        <module>web</module>
+    </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>8</maven.compiler.release>
         <flatlaf.version>3.7.2</flatlaf.version>
+        <javalin.version>6.7.0</javalin.version>
+        <slf4j.version>2.0.17</slf4j.version>
+        <shade.version>3.6.0</shade.version>
     </properties>
-
-    <dependencies>
-        <dependency>
-            <groupId>com.formdev</groupId>
-            <artifactId>flatlaf</artifactId>
-            <version>${flatlaf.version}</version>
-        </dependency>
-        <!-- Bytecode transformer goc (tach tu Advanced-Menu.jar). De trong repo
-             vi khong co tren Maven Central. Chi dung luc compile + dong goi. -->
-        <dependency>
-            <groupId>dev.j2memerger</groupId>
-            <artifactId>transformer</artifactId>
-            <version>1.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/transformer.jar</systemPath>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals><goal>shade</goal></goals>
-                        <configuration>
-                            <outputFile>${project.build.directory}/merger.jar</outputFile>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <manifestEntries>
-                                        <Main-Class>merger.Main</Main-Class>
-                                    </manifestEntries>
-                                </transformer>
-                            </transformers>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 </project>
