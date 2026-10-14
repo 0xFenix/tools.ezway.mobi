@@ -10,6 +10,8 @@ import java.util.zip.*;
  * J2ME multi-game merger CLI ported from Advanced-Menu MIDlet (classes.class_a).
  * Reuses original transformer bytecode (class_t, class_k, class_c, class_l) via classpath.
  * Run: java -jar merger.jar --out multi.jar game1.jar game2.jar [options]
+ *
+ * Core merge logic works on byte[] so the web backend can reuse it without files.
  */
 public class MergerCLI {
     /** Log sink; GUI redirects this to its log panel. */
@@ -82,28 +84,24 @@ public class MergerCLI {
         return b.toByteArray();
     }
 
-    static GameInfo loadGame(String path) throws IOException {
+    static GameInfo loadGameBytes(String displayName, byte[] jarBytes) throws IOException {
         GameInfo g = new GameInfo();
-        g.path = path;
-        ZipFile z = new ZipFile(path);
-        Enumeration<? extends ZipEntry> en = z.entries();
+        g.path = displayName;
+        ZipInputStream zin = new ZipInputStream(new ByteArrayInputStream(jarBytes));
+        ZipEntry e;
         byte[] mfBytes = null;
-        while (en.hasMoreElements()) {
-            ZipEntry e = en.nextElement();
+        while ((e = zin.getNextEntry()) != null) {
             if (e.isDirectory()) continue;
             String name = e.getName();
-            InputStream in = z.getInputStream(e);
-            byte[] data = readAll(in);
-            in.close();
+            byte[] data = readAll(zin);
             g.entryBytes.put(name, data);
             g.entryNames.add(name);
             if (name.equalsIgnoreCase("META-INF/MANIFEST.MF")) mfBytes = data;
         }
-        z.close();
-        if (mfBytes == null) throw new IOException("No MANIFEST.MF in " + path);
+        zin.close();
+        if (mfBytes == null) throw new IOException("No MANIFEST.MF in " + displayName);
         g.manifestBytes = mfBytes;
         g.manifest = new Manifest(new ByteArrayInputStream(mfBytes));
-        // Build class_c metadata (names only; offsets unused in our path)
         Vector v = new Vector();
         v.addElement(new class_l("META-INF/MANIFEST.MF"));
         for (String n : g.entryNames) {
@@ -111,9 +109,16 @@ public class MergerCLI {
             if (n.endsWith("/")) continue;
             v.addElement(new class_l(n));
         }
-        g.cc = new class_c(path, v);
-        if (!g.cc.a(mfBytes)) throw new IOException("class_c manifest parse failed: " + path);
+        g.cc = new class_c(displayName, v);
+        if (!g.cc.a(mfBytes)) throw new IOException("class_c manifest parse failed: " + displayName);
         return g;
+    }
+
+    static GameInfo loadGame(String path) throws IOException {
+        FileInputStream fin = new FileInputStream(path);
+        byte[] data = readAll(fin);
+        fin.close();
+        return loadGameBytes(path, data);
     }
 
     static Map<String, byte[]> readNestedJar(byte[] nestedJarBytes) throws IOException {
@@ -128,32 +133,48 @@ public class MergerCLI {
         return m;
     }
 
-    public static void main(String[] args) throws Exception {
-        String out = null, midName = null, vendor = null, display = null, iconPath = null;
-        int copies = 1;
-        List<String> inputs = new ArrayList<String>();
-        for (int i = 0; i < args.length; i++) {
-            if (args[i].equals("--out") && i + 1 < args.length) out = args[++i];
-            else if (args[i].equals("--name") && i + 1 < args.length) midName = args[++i];
-            else if (args[i].equals("--vendor") && i + 1 < args.length) vendor = args[++i];
-            else if (args[i].equals("--display") && i + 1 < args.length) display = args[++i];
-            else if (args[i].equals("--icon") && i + 1 < args.length) iconPath = args[++i];
-            else if (args[i].equals("--copies") && i + 1 < args.length) copies = Integer.parseInt(args[++i]);
-            else if (args[i].equals("--help") || args[i].equals("-h")) { usage(); return; }
-            else if (!args[i].startsWith("--")) inputs.add(args[i]);
-        }
-        if (out == null || inputs.isEmpty()) { usage(); System.exit(2); }
-        if (copies < 1 || copies > 25) { LOG.println("--copies must be 1..25"); System.exit(2); }
+    /** Strip .jar and directories: "C:/a/Avatar.jar" -> "Avatar". */
+    public static String deriveBaseName(String fileName) {
+        if (fileName == null) return "game";
+        String b = fileName.replace('\\', '/');
+        int s = b.lastIndexOf('/');
+        if (s >= 0) b = b.substring(s + 1);
+        if (b.toLowerCase().endsWith(".jar")) b = b.substring(0, b.length() - 4);
+        if (b.isEmpty()) b = "game";
+        return b;
+    }
 
-        LOG.println("[merger] inputs=" + inputs);
+    /** "<base>-menu-xN.jar" — same rule as the desktop GUI. */
+    public static String deriveOutputName(String inputFileName, int copies) {
+        return deriveBaseName(inputFileName) + "-menu-x" + copies + ".jar";
+    }
+
+    /** Merge with auto manifest (name/vendor/display derived from first jar). */
+    public static byte[] merge(List<byte[]> jarBytesList, List<String> jarNames, int copies) throws Exception {
+        return merge(jarBytesList, jarNames, copies, null, null, null, null);
+    }
+
+    /**
+     * Merge core working purely on bytes — shared by desktop CLI/GUI and the web backend.
+     * Overrides (may be null): midName, vendor, display, iconBytes.
+     */
+    public static byte[] merge(List<byte[]> jarBytesList, List<String> jarNames, int copies,
+                               String midNameOv, String vendorOv, String displayOv,
+                               byte[] iconOv) throws Exception {
+        if (jarBytesList == null || jarBytesList.isEmpty()) throw new IOException("No input jars");
+        if (copies < 1 || copies > 25) throw new IOException("--copies must be 1..25");
+
+        LOG.println("[merger] inputs=" + jarNames);
         List<GameInfo> games = new ArrayList<GameInfo>();
-        for (String p : inputs) {
-            GameInfo g = loadGame(p);
-            LOG.println("[merger] loaded " + p + " MIDlet-1=" + g.manifest.getMainAttributes().getValue("MIDlet-1"));
+        for (int i = 0; i < jarBytesList.size(); i++) {
+            String nm = (jarNames != null && i < jarNames.size()) ? jarNames.get(i) : ("game" + i + ".jar");
+            GameInfo g = loadGameBytes(nm, jarBytesList.get(i));
+            LOG.println("[merger] loaded " + nm + " MIDlet-1=" + g.manifest.getMainAttributes().getValue("MIDlet-1"));
             games.add(g);
         }
 
-        // Auto manifest: derive from first input jar unless overridden by flags
+        // Auto manifest: derive from first input jar unless overridden
+        String midName = midNameOv, vendor = vendorOv, display = displayOv;
         String inName = games.get(0).manifest.getMainAttributes().getValue("MIDlet-Name");
         if (inName == null || inName.trim().isEmpty()) inName = "Multi Menu";
         inName = inName.trim();
@@ -176,16 +197,13 @@ public class MergerCLI {
         Map<String, byte[]> ssMap = readNestedJar(ssBytes);
 
         Set<String> written = new HashSet<String>();
-        ZipOutputStream zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(out)));
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        ZipOutputStream zout = new ZipOutputStream(bout);
         Vector A = new Vector();
         int D = 0;
 
         // icon for output menu
-        byte[] menuIcon = defaultIcon;
-        if (iconPath != null) {
-            FileInputStream fin = new FileInputStream(iconPath);
-            menuIcon = readAll(fin); fin.close();
-        }
+        byte[] menuIcon = (iconOv != null) ? iconOv : defaultIcon;
         writeEntry(zout, written, "MZMOD/mid.png", menuIcon);
 
         // runtime: MZMODlibs.jar classes (shims + MidletInfo) + SSlib classes (menu + lib wrappers)
@@ -276,7 +294,44 @@ public class MergerCLI {
         // Rebuild: we already wrote entries; manifest must exist — write now (readers scan central dir).
         writeEntry(zout, written, "META-INF/MANIFEST.MF", mfBytes);
         zout.close();
-        LOG.println("[merger] WROTE " + out + " entries=" + written.size() + " games=" + games.size());
+        LOG.println("[merger] BUILT entries=" + written.size() + " games=" + games.size() + " bytes=" + bout.size());
+        return bout.toByteArray();
+    }
+
+    public static void main(String[] args) throws Exception {
+        String out = null, midName = null, vendor = null, display = null, iconPath = null;
+        int copies = 1;
+        List<String> inputs = new ArrayList<String>();
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equals("--out") && i + 1 < args.length) out = args[++i];
+            else if (args[i].equals("--name") && i + 1 < args.length) midName = args[++i];
+            else if (args[i].equals("--vendor") && i + 1 < args.length) vendor = args[++i];
+            else if (args[i].equals("--display") && i + 1 < args.length) display = args[++i];
+            else if (args[i].equals("--icon") && i + 1 < args.length) iconPath = args[++i];
+            else if (args[i].equals("--copies") && i + 1 < args.length) copies = Integer.parseInt(args[++i]);
+            else if (args[i].equals("--help") || args[i].equals("-h")) { usage(); return; }
+            else if (!args[i].startsWith("--")) inputs.add(args[i]);
+        }
+        if (out == null || inputs.isEmpty()) { usage(); System.exit(2); }
+        if (copies < 1 || copies > 25) { LOG.println("--copies must be 1..25"); System.exit(2); }
+
+        List<byte[]> jarBytes = new ArrayList<byte[]>();
+        for (String p : inputs) {
+            FileInputStream fin = new FileInputStream(p);
+            jarBytes.add(readAll(fin));
+            fin.close();
+        }
+        byte[] iconBytes = null;
+        if (iconPath != null) {
+            FileInputStream fin = new FileInputStream(iconPath);
+            iconBytes = readAll(fin);
+            fin.close();
+        }
+        byte[] result = merge(jarBytes, inputs, copies, midName, vendor, display, iconBytes);
+        FileOutputStream fout = new FileOutputStream(out);
+        fout.write(result);
+        fout.close();
+        LOG.println("[merger] WROTE " + out + " bytes=" + result.length);
         LOG.println("[merger] Run: java -jar Microemulator.jar \"" + out + "\"  (GUI)  or  java -cp Microemulator.jar org.microemu.app.Headless --jar \"" + out + "\"");
     }
 
