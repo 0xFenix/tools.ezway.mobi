@@ -55,7 +55,7 @@
             <input id="copies" v-model="copiesText" type="text" inputmode="numeric" autocomplete="off" spellcheck="false"
               @input="onCopiesInput" @blur="clampCopies" @keydown.enter="clampCopies"
               class="w-16 min-h-[44px] text-center bg-mutedbox border border-line rounded-lg font-mono focus:border-accent">
-            <button type="button" @click="step(1)" :disabled="copies >= 10" aria-label="Tăng copies"
+            <button type="button" @click="step(1)" :disabled="copies >= 25" aria-label="Tăng copies"
               class="min-h-[44px] min-w-[44px] rounded-lg border border-line text-lg leading-none disabled:opacity-30 hover:border-accent transition-colors duration-200">+</button>
           </div>
         </div>
@@ -99,14 +99,14 @@
       </aside>
 
       <footer class="mt-4 text-center text-xs text-mutetext font-mono">
-        merge-only · upload ≤ 30MB · copies ≤ 10 · <a class="underline hover:text-slate-300" href="/api/health">health</a>
+        merge-only · upload ≤ 50MB · copies ≤ 25 · <a class="underline hover:text-slate-300" href="/api/health">health</a>
       </footer>
     </main>
   </div>
 </template>
 
 <script>
-const MAX_COPIES = 10
+const MAX_COPIES = 25
 
 export default {
   name: 'App',

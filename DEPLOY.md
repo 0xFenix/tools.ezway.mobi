@@ -33,6 +33,6 @@ curl localhost:8080/api/health
 
 ## Giới hạn bản web
 
-- Upload ~30MB, Copies tối đa 10 (desktop 25).
+- Upload ~50MB, Copies tối đa 25 (bằng desktop).
 - Lỗi merge trả JSON `{"error":"..."}` (mã 422) — thường là jar
   obfuscate nặng / thiếu preverify / bytecode sửa ẩu.
