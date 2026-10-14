@@ -104,8 +104,11 @@
 
       <footer class="mt-4 text-center text-xs text-mutetext font-mono">
         merge-only · upload ≤ 10MB · copies ≤ 25 · <a class="underline hover:text-slate-300"
-          href="/api/health">health</a>
+          href="/api/health">health</a> · <a class="underline hover:text-slate-300"
+          href="https://github.com/0xFenix/tools.ezway.mobi" target="_blank" rel="noopener">mã nguồn</a>
       </footer>
+      <p class="mt-2 text-center text-xs text-mutetext">File upload chỉ xử lý trong RAM và xóa ngay sau khi ghép xong —
+        chúng tôi không lưu trữ bất kỳ file nào của bạn. Bạn tự chịu trách nhiệm về bản quyền và nội dung file sử dụng.</p>
     </main>
   </div>
 </template>
