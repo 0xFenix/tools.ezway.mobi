@@ -27,18 +27,21 @@ jobs:
       - name: Build desktop jar
         run: mvn -DskipTests package -pl desktop -am
 
+      - name: Rename asset
+        run: cp desktop/target/merger.jar "AdvMenuJ2me-$GITHUB_REF_NAME.jar"
+
       # desktop phai chay tren JRE 8 -> class major version 52.
       - name: Verify artifact (Java 8 bytecode)
         run: |
-          test -f desktop/target/merger.jar
-          javap -verbose -cp desktop/target/merger.jar merger.Main | grep -m1 "major version: 52"
+          test -f "AdvMenuJ2me-$GITHUB_REF_NAME.jar"
+          javap -verbose -cp "AdvMenuJ2me-$GITHUB_REF_NAME.jar" merger.Main | grep -m1 "major version: 52"
 
       - name: Publish to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" desktop/target/merger.jar --clobber
+            gh release upload "$GITHUB_REF_NAME" "AdvMenuJ2me-$GITHUB_REF_NAME.jar" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" desktop/target/merger.jar --generate-notes
+            gh release create "$GITHUB_REF_NAME" "AdvMenuJ2me-$GITHUB_REF_NAME.jar" --title "AdvMenuJ2me $GITHUB_REF_NAME" --generate-notes
           fi
