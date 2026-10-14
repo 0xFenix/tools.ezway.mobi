@@ -9,3 +9,5 @@ Client-Avatar.jar
 Microemulator.jar
 # local tool config
 opencode.json
+
+dependency-reduced-pom.xml
