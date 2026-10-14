@@ -7,6 +7,13 @@ multi*.jar
 # third-party / game jars (not ours)
 Advanced-Menu.jar
 Client-Avatar.jar
+# user-local test jars, proguard outputs and setup (do not commit)
+Avatar_*.jar
+AvatarLocalMod*
+proguard.pro
+libs/cldcapi11.jar
+libs/midpapi20.jar
+libs/wma20.jar
 Microemulator.jar
 # local tool config
 opencode.json
