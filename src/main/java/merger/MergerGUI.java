@@ -14,9 +14,9 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 /** Swing GUI for the J2ME multi-game merger. Shares the same core as the CLI. */
 public class MergerGUI extends JFrame {
-  private final JTextField fileField = new JTextField(22);
+  private final JTextField fileField = new JTextField(30);
   private final JSpinner copiesSpin = new JSpinner(new SpinnerNumberModel(6, 1, 25, 1));
-  private final JTextArea logArea = new JTextArea(10, 40);
+  private final JTextArea logArea = new JTextArea(12, 60);
   private final JButton mergeBtn = new JButton("Bắt đầu ghép");
   private final JComboBox<String> themeBox = new JComboBox<String>(new String[] {"Sáng", "Tối"});
   private final JProgressBar progress = new JProgressBar();
@@ -131,7 +131,7 @@ public class MergerGUI extends JFrame {
             }));
 
     pack();
-    setMinimumSize(new Dimension(460, 520));
+    setMinimumSize(new Dimension(620, 520));
     setLocationRelativeTo(null);
   }
 
