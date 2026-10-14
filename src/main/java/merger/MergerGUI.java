@@ -15,19 +15,10 @@ import java.util.List;
 public class MergerGUI extends JFrame {
     private final DefaultListModel<String> inputModel = new DefaultListModel<String>();
     private final JList<String> inputList = new JList<String>(inputModel);
-    private final JTextField outField = new JTextField(28);
-    private final JSpinner copiesSpin = new JSpinner(new SpinnerNumberModel(10, 1, 25, 1));
-    private final JTextField nameField = new JTextField("Multi Menu", 16);
-    private final JTextField vendorField = new JTextField("MZMOD", 16);
-    private final JTextField displayField = new JTextField("Multi Menu", 16);
-    private final JTextField iconField = new JTextField(20);
-    private final JTextField emuField = new JTextField("Microemulator.jar", 20);
     private final JTextArea logArea = new JTextArea(12, 60);
     private final JButton mergeBtn = new JButton("Merge");
-    private final JButton runBtn = new JButton("Run in Microemulator");
     private final JComboBox<String> themeBox = new JComboBox<String>(new String[]{"Sáng", "Tối"});
     private final JProgressBar progress = new JProgressBar();
-    private String lastOut = null;
     private boolean dark = false;
 
     public MergerGUI() {
@@ -61,43 +52,16 @@ public class MergerGUI extends JFrame {
         listRow.add(ibtns, BorderLayout.EAST);
         main.add(listRow, BorderLayout.NORTH);
 
-        // ---- options ----
-        JPanel opts = new JPanel(new GridBagLayout());
-        GridBagConstraints c = new GridBagConstraints();
-        c.insets = new Insets(3, 4, 3, 4);
-        c.anchor = GridBagConstraints.WEST;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        int r = 0;
-        c.gridx = 0; c.gridy = r; c.weightx = 0; opts.add(new JLabel("Output jar:"), c);
-        c.gridx = 1; c.weightx = 1; opts.add(outField, c);
-        c.gridx = 2; c.weightx = 0; JButton browseOut = new JButton("Browse...");
-        opts.add(browseOut, c); r++;
-        c.gridx = 0; c.gridy = r; opts.add(new JLabel("Copies (1-25):"), c);
-        c.gridx = 1; opts.add(copiesSpin, c); r++;
-        c.gridx = 0; c.gridy = r; opts.add(new JLabel("MIDlet-Name:"), c);
-        c.gridx = 1; opts.add(nameField, c); r++;
-        c.gridx = 0; c.gridy = r; opts.add(new JLabel("Vendor:"), c);
-        c.gridx = 1; opts.add(vendorField, c); r++;
-        c.gridx = 0; c.gridy = r; opts.add(new JLabel("Menu title:"), c);
-        c.gridx = 1; opts.add(displayField, c); r++;
-        c.gridx = 0; c.gridy = r; opts.add(new JLabel("Menu icon (png):"), c);
-        c.gridx = 1; opts.add(iconField, c);
-        c.gridx = 2; JButton browseIcon = new JButton("Browse...");
-        opts.add(browseIcon, c); r++;
-        c.gridx = 0; c.gridy = r; opts.add(new JLabel("Microemulator:"), c);
-        c.gridx = 1; opts.add(emuField, c);
-        c.gridx = 2; JButton browseEmu = new JButton("Browse...");
-        opts.add(browseEmu, c);
-        main.add(opts, BorderLayout.CENTER);
+        JLabel hint = new JLabel("Mỗi game được nhân thành 6 bản, file gộp lưu cùng thư mục với game đầu tiên.");
+        hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        main.add(hint, BorderLayout.CENTER);
         add(main, BorderLayout.CENTER);
 
-        // ---- bottom: buttons + progress + log ----
+        // ---- bottom: button + progress + log ----
         JPanel bottom = new JPanel(new BorderLayout(0, 6));
         bottom.setBorder(BorderFactory.createEmptyBorder(4, 10, 10, 10));
         JPanel bbtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         bbtns.add(mergeBtn);
-        runBtn.setEnabled(false);
-        bbtns.add(runBtn);
         bbtns.add(progress);
         progress.setVisible(false);
         progress.setPreferredSize(new Dimension(160, 16));
@@ -121,32 +85,10 @@ public class MergerGUI extends JFrame {
             for (String s : inputList.getSelectedValuesList()) inputModel.removeElement(s);
         });
         clr.addActionListener(e -> inputModel.clear());
-        browseOut.addActionListener(e -> {
-            JFileChooser fc = new JFileChooser(".");
-            fc.setFileFilter(new FileNameExtensionFilter("JAR", "jar"));
-            if (fc.showSaveDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION) {
-                String p = fc.getSelectedFile().getAbsolutePath();
-                if (!p.toLowerCase().endsWith(".jar")) p += ".jar";
-                outField.setText(p);
-            }
-        });
-        browseIcon.addActionListener(e -> {
-            JFileChooser fc = new JFileChooser(".");
-            fc.setFileFilter(new FileNameExtensionFilter("PNG", "png"));
-            if (fc.showOpenDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION)
-                iconField.setText(fc.getSelectedFile().getAbsolutePath());
-        });
-        browseEmu.addActionListener(e -> {
-            JFileChooser fc = new JFileChooser(".");
-            fc.setFileFilter(new FileNameExtensionFilter("JAR", "jar"));
-            if (fc.showOpenDialog(MergerGUI.this) == JFileChooser.APPROVE_OPTION)
-                emuField.setText(fc.getSelectedFile().getAbsolutePath());
-        });
         mergeBtn.addActionListener(e -> doMerge());
-        runBtn.addActionListener(e -> doRun());
 
         pack();
-        setMinimumSize(new Dimension(640, 620));
+        setMinimumSize(new Dimension(620, 520));
         setLocationRelativeTo(null);
     }
 
@@ -167,19 +109,23 @@ public class MergerGUI extends JFrame {
 
     private void doMerge() {
         if (inputModel.isEmpty()) { log("Add at least one game jar first."); return; }
-        if (outField.getText().trim().isEmpty()) { log("Choose an output jar first."); return; }
+        final String first = inputModel.get(0);
+        final java.io.File firstFile = new java.io.File(first);
+        String base = firstFile.getName();
+        if (base.toLowerCase().endsWith(".jar")) base = base.substring(0, base.length() - 4);
+        java.io.File out = new java.io.File(firstFile.getParent(), base + "-menu.jar");
+        int n = 2;
+        while (out.exists()) {
+            out = new java.io.File(firstFile.getParent(), base + "-menu-" + (n++) + ".jar");
+        }
+        final String outPath = out.getAbsolutePath();
         mergeBtn.setEnabled(false);
-        runBtn.setEnabled(false);
         progress.setVisible(true);
         progress.setIndeterminate(true);
         logArea.setText("");
         final List<String> args = new ArrayList<String>();
-        args.add("--out"); args.add(outField.getText().trim());
-        args.add("--copies"); args.add(copiesSpin.getValue().toString());
-        args.add("--name"); args.add(nameField.getText());
-        args.add("--vendor"); args.add(vendorField.getText());
-        args.add("--display"); args.add(displayField.getText());
-        if (!iconField.getText().trim().isEmpty()) { args.add("--icon"); args.add(iconField.getText().trim()); }
+        args.add("--out"); args.add(outPath);
+        args.add("--copies"); args.add("6");
         for (int i = 0; i < inputModel.size(); i++) args.add(inputModel.get(i));
 
         // Redirect core logs into the GUI log panel
@@ -212,21 +158,11 @@ public class MergerGUI extends JFrame {
                 progress.setVisible(false);
                 try {
                     if (get() == 0) {
-                        lastOut = outField.getText().trim();
-                        runBtn.setEnabled(true);
-                        log("DONE: " + lastOut);
+                        log("DONE: " + outPath);
                     } else log("FAILED — see log above.");
                 } catch (Exception ex) { log("FAILED: " + ex.getMessage()); }
             }
         }.execute();
-    }
-
-    private void doRun() {
-        if (lastOut == null) return;
-        try {
-            new ProcessBuilder("java", "-jar", emuField.getText().trim(), lastOut).start();
-            log("Launched Microemulator with " + lastOut);
-        } catch (Exception ex) { log("Cannot launch emulator: " + ex.getMessage()); }
     }
 
     private void log(String s) { logArea.append(s + "\n"); }

@@ -13,10 +13,13 @@ mvn package
 Jar thành phẩm: `target/merger.jar` — vừa là CLI vừa là GUI (không cần kèm file nào khác).
 
 ```bat
-java -jar target/merger.jar                 :: mở GUI
+java -jar target/merger.jar                 :: mở GUI: chỉ cần Add game + Merge
 java -jar target/merger.jar --gui           :: mở GUI
 java -jar target/merger.jar --out multi.jar --copies 6 game1.jar game2.jar
 ```
+
+GUI tự động: mỗi game nhân thành **6 bản**, file gộp lưu cùng thư mục
+với game đầu tiên (`<ten-game>-menu.jar`, tự tránh trùng tên).
 
 Options CLI: `--out`, `--copies 1..25` (mặc định 10, theo tool gốc),
 `--name`, `--vendor`, `--display`, `--icon icon.png`.

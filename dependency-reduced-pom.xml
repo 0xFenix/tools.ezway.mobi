@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>dev.j2memerger</groupId>
+  <artifactId>j2me-menu-merger</artifactId>
+  <name>J2ME Menu Merger</name>
+  <version>1.0.0</version>
+  <description>Gop nhieu game J2ME (.jar) thanh mot menu duy nhat, chay tren PC qua Microemulator.</description>
+  <url>https://github.com/j2memerger/j2me-menu-merger</url>
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <outputFile>${project.build.directory}/merger.jar</outputFile>
+              <transformers>
+                <transformer>
+                  <manifestEntries>
+                    <Main-Class>merger.Main</Main-Class>
+                  </manifestEntries>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+  <dependencies>
+    <dependency>
+      <groupId>dev.j2memerger</groupId>
+      <artifactId>transformer</artifactId>
+      <version>1.0</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/libs/transformer.jar</systemPath>
+    </dependency>
+  </dependencies>
+  <properties>
+    <maven.compiler.release>11</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <flatlaf.version>3.7.2</flatlaf.version>
+  </properties>
+</project>
