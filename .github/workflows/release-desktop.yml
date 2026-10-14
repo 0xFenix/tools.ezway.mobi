@@ -1,0 +1,44 @@
+name: Release desktop
+
+# Push tag v* (vd v1.0.0) -> build merger.jar -> dinh kem vao Release.
+# Quy trinh: commit -> git tag v1.x -> git push origin v1.x
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # Chi build core + desktop (ne web/frontend) cho nhanh.
+      - name: Build desktop jar
+        run: mvn -DskipTests package -pl desktop -am
+
+      # desktop phai chay tren JRE 8 -> class major version 52.
+      - name: Verify artifact (Java 8 bytecode)
+        run: |
+          test -f desktop/target/merger.jar
+          javap -verbose -cp desktop/target/merger.jar merger.Main | grep -m1 "major version: 52"
+
+      - name: Publish to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" desktop/target/merger.jar --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" desktop/target/merger.jar --generate-notes
+          fi
