@@ -8,6 +8,7 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
+import java.awt.dnd.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,35 +43,14 @@ public class MergerGUI extends JFrame {
         main.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
 
         fileField.setEditable(false);
-        fileField.setToolTipText("Kéo-thả file .jar vào đây");
-        fileField.setTransferHandler(new TransferHandler() {
-            public boolean canImport(TransferSupport s) {
-                return s.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
-            }
-            @SuppressWarnings("unchecked")
-            public boolean importData(TransferSupport s) {
-                try {
-                    java.util.List<java.io.File> files =
-                        (java.util.List<java.io.File>) s.getTransferable()
-                            .getTransferData(DataFlavor.javaFileListFlavor);
-                    for (java.io.File f : files)
-                        if (f.getName().toLowerCase().endsWith(".jar")) {
-                            fileField.setText(f.getAbsolutePath());
-                            return true;
-                        }
-                    return false;
-                } catch (Exception ex) {
-                    return false;
-                }
-            }
-        });
+        fileField.setToolTipText("Kéo-thả file .jar vào bất kỳ đâu trong cửa sổ");
         JButton browse = new JButton("Chọn file...");
         JPanel fileRow = new JPanel(new BorderLayout(6, 0));
         fileRow.add(fileField, BorderLayout.CENTER);
         fileRow.add(browse, BorderLayout.EAST);
         main.add(fileRow, BorderLayout.NORTH);
 
-        JLabel hint = new JLabel("File gộp lưu cùng thư mục: <tên-game>-menu-xN.jar (N = số copies).");
+        JLabel hint = new JLabel("Kéo-thả file .jar vào bất kỳ đâu trong cửa sổ (hoặc bấm Chọn file...).");
         hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         main.add(hint, BorderLayout.CENTER);
         add(main, BorderLayout.CENTER);
@@ -102,6 +82,39 @@ public class MergerGUI extends JFrame {
                 fileField.setText(fc.getSelectedFile().getAbsolutePath());
         });
         mergeBtn.addActionListener(e -> doMerge());
+
+        // Window-wide drag & drop: drop a .jar anywhere to select it
+        final java.awt.Color fieldBg = fileField.getBackground();
+        setDropTarget(new DropTarget(this, DnDConstants.ACTION_COPY, new DropTargetAdapter() {
+            public void dragEnter(DropTargetDragEvent e) {
+                if (e.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                    fileField.setBackground(new java.awt.Color(255, 255, 200));
+                    e.acceptDrag(DnDConstants.ACTION_COPY);
+                } else e.rejectDrag();
+            }
+            public void dragExit(DropTargetEvent e) {
+                fileField.setBackground(fieldBg);
+            }
+            @SuppressWarnings("unchecked")
+            public void drop(DropTargetDropEvent e) {
+                fileField.setBackground(fieldBg);
+                try {
+                    e.acceptDrop(DnDConstants.ACTION_COPY);
+                    java.util.List<java.io.File> files =
+                        (java.util.List<java.io.File>) e.getTransferable()
+                            .getTransferData(DataFlavor.javaFileListFlavor);
+                    for (java.io.File f : files)
+                        if (f.getName().toLowerCase().endsWith(".jar")) {
+                            fileField.setText(f.getAbsolutePath());
+                            e.dropComplete(true);
+                            return;
+                        }
+                    e.dropComplete(false);
+                } catch (Exception ex) {
+                    e.dropComplete(false);
+                }
+            }
+        }), true);
 
         pack();
         setMinimumSize(new Dimension(620, 520));
