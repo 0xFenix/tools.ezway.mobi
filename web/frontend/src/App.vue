@@ -102,67 +102,16 @@
         có thể lỗi trong quá trình chuyển phiên bản.
       </aside>
 
-      <!-- Stats -->
-      <section aria-label="Thống kê sử dụng" class="mt-4 grid grid-cols-3 gap-2">
-        <div class="bg-card border border-line rounded-xl px-2 py-3 text-center">
-          <span class="relative mx-auto mb-2 flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-60"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
-          </span>
-          <p class="font-mono text-lg font-semibold leading-none">{{ stats.online }}</p>
-          <p class="mt-1 text-[11px] text-mutetext">đang online</p>
-        </div>
-        <div class="bg-card border border-line rounded-xl px-2 py-3 text-center">
-          <svg class="mx-auto mb-1.5 h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <p class="font-mono text-lg font-semibold leading-none">{{ stats.visits }}</p>
-          <p class="mt-1 text-[11px] text-mutetext">lượt truy cập</p>
-        </div>
-        <div class="bg-card border border-line rounded-xl px-2 py-3 text-center">
-          <svg class="mx-auto mb-1.5 h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25" />
-          </svg>
-          <p class="font-mono text-lg font-semibold leading-none">{{ stats.merges }}</p>
-          <p class="mt-1 text-[11px] text-mutetext">file đã ghép</p>
-        </div>
-      </section>
-
-      <!-- Links -->
-      <footer class="mt-2 bg-card border border-line rounded-xl px-4 py-3 text-center text-xs text-mutetext font-mono">
-        <p>merge-only · upload ≤ 10MB · copies ≤ 25</p>
-        <p class="mt-2 flex items-center justify-center gap-5">
-          <a class="inline-flex items-center gap-1.5 hover:text-slate-300" href="/api/health">
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-            </svg>health</a>
-          <a class="inline-flex items-center gap-1.5 hover:text-slate-300"
-            href="https://github.com/0xFenix/tools.ezway.mobi" target="_blank" rel="noopener">
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
-            </svg>mã nguồn</a>
-        </p>
+      <footer class="mt-4 text-center text-xs text-mutetext font-mono">
+        online {{ stats.online }} · truy cập {{ stats.visits }} · đã ghép {{ stats.merges }}
       </footer>
-
-      <!-- Disclaimer -->
-      <p class="mt-2 flex gap-2 text-xs text-mutetext">
-        <svg class="h-4 w-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          <polyline points="9 12 11 14 15 10" />
-        </svg>
-        <span>File upload chỉ xử lý trong RAM và xóa ngay sau khi ghép xong —
-          chúng tôi không lưu trữ bất kỳ file nào của bạn. Bạn tự chịu trách nhiệm về bản quyền và nội dung file
-          sử dụng.</span>
-      </p>
+      <footer class="mt-1 text-center text-xs text-mutetext font-mono">
+        merge-only · upload ≤ 10MB · copies ≤ 25 · <a class="underline hover:text-slate-300"
+          href="/api/health">health</a> · <a class="underline hover:text-slate-300"
+          href="https://github.com/0xFenix/tools.ezway.mobi" target="_blank" rel="noopener">mã nguồn</a>
+      </footer>
+      <p class="mt-2 text-center text-xs text-mutetext">File upload chỉ xử lý trong RAM và xóa ngay sau khi ghép xong —
+        chúng tôi không lưu trữ bất kỳ file nào của bạn. Bạn tự chịu trách nhiệm về bản quyền và nội dung file sử dụng.</p>
     </main>
   </div>
 </template>
