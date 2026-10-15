@@ -103,6 +103,9 @@
       </aside>
 
       <footer class="mt-4 text-center text-xs text-mutetext font-mono">
+        online {{ stats.online }} · truy cập {{ stats.visits }} · đã ghép {{ stats.merges }}
+      </footer>
+      <footer class="mt-1 text-center text-xs text-mutetext font-mono">
         merge-only · upload ≤ 10MB · copies ≤ 25 · <a class="underline hover:text-slate-300"
           href="/api/health">health</a> · <a class="underline hover:text-slate-300"
           href="https://github.com/0xFenix/tools.ezway.mobi" target="_blank" rel="noopener">mã nguồn</a>
@@ -128,8 +131,19 @@ export default {
       error: '',
       done: '',
       blobUrl: '',
-      dragging: false
+      dragging: false,
+      sid: '',
+      stats: { visits: 0, online: 0, merges: 0 },
+      statsTimer: 0
     }
+  },
+  mounted() {
+    this.sid = this.getSid()
+    this.ping()
+    this.statsTimer = setInterval(this.ping, 30000)
+  },
+  beforeUnmount() {
+    if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = 0 }
   },
   computed: {
     outName() {
@@ -144,6 +158,30 @@ export default {
     }
   },
   methods: {
+    getSid() {
+      try {
+        let sid = localStorage.getItem('j2me-sid')
+        if (!sid) {
+          sid = (window.crypto && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : (Date.now() + '-' + Math.random().toString(36).slice(2))
+          localStorage.setItem('j2me-sid', sid)
+        }
+        return sid
+      } catch (e) { return 'mem-' + Date.now() }
+    },
+    async ping() {
+      try {
+        const res = await fetch('/api/ping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sid: this.sid })
+        })
+        if (!res.ok) return
+        const s = await res.json()
+        this.stats = { visits: s.visits || 0, online: s.online || 0, merges: s.merges || 0 }
+      } catch (e) { /* stats best-effort, keep silent */ }
+    },
     browse() { this.$refs.fileInput.click() },
     onPick(e) { this.setFile(e.target.files[0]); e.target.value = '' },
     onDrop(e) {
@@ -213,6 +251,7 @@ export default {
         this.done = name
         this.hint = ''
         this.downloadAgain()
+        this.ping()
       } catch (e) {
         this.error = 'Lỗi: ' + (e && e.message ? e.message : e)
         this.hint = ''

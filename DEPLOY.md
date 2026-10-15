@@ -36,3 +36,6 @@ curl localhost:8080/api/health
 - Upload ~10MB, Copies tối đa 25 (bằng desktop).
 - Lỗi merge trả JSON `{"error":"..."}` (mã 422) — thường là jar
   obfuscate nặng / thiếu preverify / bytecode sửa ẩu.
+- Thống kê (`GET /api/stats`: online/truy cập/đã ghép) lưu ở
+  `stats.json` trong thư mục chạy jar — backup chung với jar khi
+  chuyển VPS, xóa file để reset số liệu.

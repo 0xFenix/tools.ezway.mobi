@@ -17,7 +17,8 @@ import java.util.Map;
  * Merge-only web backend (Javalin) reusing {@link MergerCLI#merge} (byte[] in/out).
  *
  * <p>- GET / -> single-page frontend - GET /api/health -> {"ok":true,...} - POST /api/merge ->
- * multipart (game=@file.jar, copies=N), returns merged jar
+ * multipart (game=@file.jar, copies=N), returns merged jar - POST /api/ping -> heartbeat {sid},
+ * returns usage stats - GET /api/stats -> {"visits":N,"online":N,"merges":N,"downloads":N}
  */
 public class WebServer {
   /** Max upload: ~10MB (game J2ME hiếm khi quá 2MB). */
@@ -27,6 +28,9 @@ public class WebServer {
   static final int MAX_COPIES = 25;
 
   static final int DEFAULT_COPIES = 6;
+
+  /** Aggregate usage counters (visits/online/merges), persisted to stats.json. */
+  static final StatsStore STATS = StatsStore.loadDefault();
 
   public static Javalin start(int port) {
     Javalin app =
@@ -40,6 +44,8 @@ public class WebServer {
               config.spaRoot.addFile("/", "/web/index.html");
               config.routes.get("/api/health", WebServer::health);
               config.routes.post("/api/merge", WebServer::merge);
+              config.routes.post("/api/ping", WebServer::ping);
+              config.routes.get("/api/stats", WebServer::stats);
             });
     app.start(port);
     System.out.println("[web] listening on http://localhost:" + port);
@@ -48,6 +54,28 @@ public class WebServer {
 
   static void health(Context ctx) {
     ctx.json(Map.of("ok", true, "app", "j2me-merger", "maxUploadMB", 10, "maxCopies", MAX_COPIES));
+  }
+
+  static void ping(Context ctx) {
+    String sid = "";
+    try {
+      Map<?, ?> body = ctx.bodyAsClass(Map.class);
+      Object v = body == null ? null : body.get("sid");
+      if (v != null) sid = String.valueOf(v).trim();
+    } catch (Exception e) {
+      ctx.status(400).json(Map.of("error", "bad ping body, want {\"sid\":\"...\"}"));
+      return;
+    }
+    if (sid.length() < 8 || sid.length() > 64 || !sid.matches("[A-Za-z0-9-]+")) {
+      ctx.status(400).json(Map.of("error", "bad sid"));
+      return;
+    }
+    STATS.ping(sid);
+    ctx.json(STATS.snapshot());
+  }
+
+  static void stats(Context ctx) {
+    ctx.json(STATS.snapshot());
   }
 
   static void merge(Context ctx) throws Exception {
@@ -106,6 +134,7 @@ public class WebServer {
       MergerCLI.LOG = prev;
     }
     String outName = MergerCLI.deriveOutputName(origName, copies);
+    STATS.countMerge();
     ctx.contentType("application/java-archive");
     ctx.header("Content-Disposition", "attachment; filename=\"" + outName + "\"");
     ctx.result(result);
