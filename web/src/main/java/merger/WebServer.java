@@ -8,7 +8,7 @@ import io.javalin.http.UploadedFile;
 import io.javalin.http.staticfiles.Location;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.io.PrintStream;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +28,9 @@ public class WebServer {
   static final int MAX_COPIES = 25;
 
   static final int DEFAULT_COPIES = 6;
+
+  /** Isolated merge slots (transformer core is not thread-safe); excess load gets 429. */
+  static final MergePool MERGE_POOL = new MergePool();
 
   /** Aggregate usage counters (visits/online/merges), persisted to stats.json. */
   static final StatsStore STATS = StatsStore.loadDefault();
@@ -79,6 +82,22 @@ public class WebServer {
   }
 
   static void merge(Context ctx) throws Exception {
+    URLClassLoader slot = MERGE_POOL.borrow();
+    if (slot == null) {
+      ctx.status(429);
+      ctx.header("Retry-After", "5");
+      ctx.json(Map.of("error", "server dang ban, thu lai sau vai giay"));
+      return;
+    }
+    long t0 = System.currentTimeMillis();
+    try {
+      mergeInSlot(ctx, slot, t0);
+    } finally {
+      MERGE_POOL.release(slot);
+    }
+  }
+
+  static void mergeInSlot(Context ctx, URLClassLoader slot, long t0) throws Exception {
     UploadedFile game = ctx.uploadedFile("game");
     if (game == null || game.size() == 0) {
       ctx.status(400).json(Map.of("error", "missing file field 'game'"));
@@ -119,19 +138,14 @@ public class WebServer {
     jars.add(data);
     List<String> names = new ArrayList<>();
     names.add(origName);
-    // Silence per-request merge chatter; keep server log to one line.
-    PrintStream prev = MergerCLI.LOG;
-    MergerCLI.LOG = new PrintStream(new ByteArrayOutputStream());
     byte[] result;
     try {
-      result = MergerCLI.merge(jars, names, copies);
+      result = MergePool.merge(slot, jars, names, copies);
     } catch (Exception e) {
       String msg = e.getMessage() == null ? e.toString() : e.getMessage();
       ctx.status(422).json(Map.of("error", "merge failed: " + msg));
       System.out.println("[web] merge failed: " + e);
       return;
-    } finally {
-      MergerCLI.LOG = prev;
     }
     String outName = MergerCLI.deriveOutputName(origName, copies);
     STATS.countMerge();
@@ -147,7 +161,9 @@ public class WebServer {
             + outName
             + " ("
             + result.length
-            + " bytes)");
+            + " bytes, "
+            + (System.currentTimeMillis() - t0)
+            + " ms)");
   }
 
   static byte[] readAll(InputStream in) throws Exception {
