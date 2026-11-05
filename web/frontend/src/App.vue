@@ -149,7 +149,9 @@ export default {
       statsTimer: 0,
       jobId: '',
       prog: { status: '', done: 0, total: 0, current: '', queued: 0 },
-      pollTimer: 0
+      pollTimer: 0,
+      polling: false,
+      finished: false
     }
   },
   mounted() {
@@ -226,6 +228,7 @@ export default {
     },
     clear() {
       this.stopPoll()
+      this.jobId = ''; this.polling = false; this.finished = false
       this.file = null; this.error = ''; this.done = ''; this.hint = ''
       this.prog = { status: '', done: 0, total: 0, current: '', queued: 0 }
       this.revokeBlob()
@@ -276,6 +279,7 @@ export default {
         if (res.status === 202) {
           const j = await res.json()
           this.jobId = j.jobId
+          this.polling = false; this.finished = false
           this.prog.status = 'queued'
           this.prog.queued = j.queued || 0
           this.hint = ''
@@ -293,20 +297,31 @@ export default {
       }
     },
     async pollJob() {
+      if (this.polling || this.finished) return
+      this.polling = true
       try {
         const res = await fetch('/api/jobs/' + this.jobId)
         if (!res.ok) throw new Error(res.status === 404 ? 'job hết hạn, gửi lại file' : 'HTTP ' + res.status)
         const j = await res.json()
+        if (!this.jobId) return
         this.prog = { status: j.status, done: j.done || 0, total: j.total || 0, current: j.current || '', queued: j.queued || 0 }
-        if (j.status === 'done') { this.stopPoll(); await this.fetchResult() }
-        else if (j.status === 'error') { this.stopPoll(); throw new Error(j.error || 'merge failed') }
+        if (j.status === 'done' || j.status === 'error') {
+          if (this.finished) return
+          this.finished = true
+          this.stopPoll()
+          if (j.status === 'done') await this.fetchResult()
+          else throw new Error(j.error || 'merge failed')
+        }
       } catch (e) {
         this.stopPoll()
         this.error = 'Lỗi: ' + (e && e.message ? e.message : e)
         this.busy = false
+      } finally {
+        this.polling = false
       }
     },
     async fetchResult() {
+      const jid = this.jobId
       const res = await fetch('/api/jobs/' + this.jobId + '/download')
       if (!res.ok) {
         let msg = 'HTTP ' + res.status
@@ -317,6 +332,7 @@ export default {
       const m = /filename="([^"]+)"/.exec(cd)
       const name = m ? m[1] : this.outName
       const blob = await res.blob()
+      if (!jid || jid !== this.jobId) return
       this.revokeBlob()
       this.blobUrl = URL.createObjectURL(blob)
       this.done = name
