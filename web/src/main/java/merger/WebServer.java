@@ -86,7 +86,7 @@ public class WebServer {
     if (slot == null) {
       ctx.status(429);
       ctx.header("Retry-After", "5");
-      ctx.json(Map.of("error", "server dang ban, thu lai sau vai giay"));
+      ctx.json(Map.of("error", "server busy, please retry in a few seconds"));
       return;
     }
     long t0 = System.currentTimeMillis();
