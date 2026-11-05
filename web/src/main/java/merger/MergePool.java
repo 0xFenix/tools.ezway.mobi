@@ -39,7 +39,12 @@ public class MergePool {
   }
 
   @SuppressWarnings("unchecked")
-  public static byte[] merge(URLClassLoader slot, List<byte[]> jars, List<String> names, int copies)
+  public static byte[] merge(
+      URLClassLoader slot,
+      List<byte[]> jars,
+      List<String> names,
+      int copies,
+      java.lang.reflect.InvocationHandler progress)
       throws Exception {
     Class<?> cli = Class.forName("classes.MergerCLI", true, slot);
     // Silence per-request chatter; statics are slot-private and the slot is
@@ -48,8 +53,25 @@ public class MergePool {
     PrintStream prev = (PrintStream) logField.get(null);
     logField.set(null, new PrintStream(new ByteArrayOutputStream()));
     try {
-      Method m = cli.getMethod("merge", List.class, List.class, int.class);
-      return (byte[]) m.invoke(null, jars, names, copies);
+      if (progress == null) {
+        Method m = cli.getMethod("merge", List.class, List.class, int.class);
+        return (byte[]) m.invoke(null, jars, names, copies);
+      }
+      Class<?> progIf = Class.forName("classes.MergerCLI$Progress", true, slot);
+      Object proxy =
+          java.lang.reflect.Proxy.newProxyInstance(slot, new Class<?>[] {progIf}, progress);
+      Method m =
+          cli.getMethod(
+              "merge",
+              List.class,
+              List.class,
+              int.class,
+              String.class,
+              String.class,
+              String.class,
+              byte[].class,
+              progIf);
+      return (byte[]) m.invoke(null, jars, names, copies, null, null, null, null, proxy);
     } catch (InvocationTargetException e) {
       Throwable c = e.getCause();
       if (c instanceof Exception) throw (Exception) c;

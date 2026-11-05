@@ -187,6 +187,14 @@ public class MergerCLI {
    * Merge core working purely on bytes — shared by desktop CLI/GUI and the web backend. Overrides
    * (may be null): midName, vendor, display, iconBytes.
    */
+  /**
+   * Progress callback for UIs (e.g. web progress bar). Called once per transformed class with
+   * running counters; may be null. Reporting only — never affects output bytes.
+   */
+  public interface Progress {
+    void onClass(int done, int total, String name);
+  }
+
   public static byte[] merge(
       List<byte[]> jarBytesList,
       List<String> jarNames,
@@ -195,6 +203,19 @@ public class MergerCLI {
       String vendorOv,
       String displayOv,
       byte[] iconOv)
+      throws Exception {
+    return merge(jarBytesList, jarNames, copies, midNameOv, vendorOv, displayOv, iconOv, null);
+  }
+
+  public static byte[] merge(
+      List<byte[]> jarBytesList,
+      List<String> jarNames,
+      int copies,
+      String midNameOv,
+      String vendorOv,
+      String displayOv,
+      byte[] iconOv,
+      Progress progress)
       throws Exception {
     if (jarBytesList == null || jarBytesList.isEmpty()) throw new IOException("No input jars");
     if (copies < 1 || copies > 25) throw new IOException("--copies must be 1..25");
@@ -246,6 +267,15 @@ public class MergerCLI {
     ZipOutputStream zout = new ZipOutputStream(bout);
     Vector A = new Vector();
     int D = 0;
+
+    // Total transform units for progress reporting (classes x copies); counting only.
+    int totalUnits = 0;
+    for (GameInfo gg : games) {
+      int classCount = 0;
+      for (String n : gg.entryNames) if (n.endsWith(".class")) classCount++;
+      totalUnits += classCount * copies;
+    }
+    int doneUnits = 0;
 
     // icon for output menu
     byte[] menuIcon = (iconOv != null) ? iconOv : defaultIcon;
@@ -309,6 +339,8 @@ public class MergerCLI {
           byte[] raw = g.entryBytes.get(n);
           byte[] tr = transformClass(raw, prefixChar);
           writeEntry(zout, written, prefixDir + n, tr);
+          doneUnits++;
+          if (progress != null) progress.onClass(doneUnits, totalUnits, prefixDir + n);
         }
         byte[] st = class_k.a(class_t.a, staticName);
         if (st != null) writeEntry(zout, written, staticName + ".class", st);

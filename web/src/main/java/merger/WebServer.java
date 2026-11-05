@@ -8,17 +8,17 @@ import io.javalin.http.UploadedFile;
 import io.javalin.http.staticfiles.Location;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
- * Merge-only web backend (Javalin) reusing {@link MergerCLI#merge} (byte[] in/out).
+ * Merge-only web backend (Javalin) reusing {@link classes.MergerCLI#merge} (byte[] in/out).
  *
  * <p>- GET / -> single-page frontend - GET /api/health -> {"ok":true,...} - POST /api/merge ->
- * multipart (game=@file.jar, copies=N), returns merged jar - POST /api/ping -> heartbeat {sid},
- * returns usage stats - GET /api/stats -> {"visits":N,"online":N,"merges":N,"downloads":N}
+ * multipart (game=@file.jar, copies=N), returns 202 {"jobId":...} - GET /api/jobs/:id -> progress
+ * {"status":queued|running|done|error,"done":N,"total":N,"current":"..."} - GET
+ * /api/jobs/:id/download -> merged jar once done - POST /api/ping -> heartbeat {sid}, returns
+ * usage stats - GET /api/stats -> {"visits":N,"online":N,"merges":N,"downloads":N}
  */
 public class WebServer {
   /** Max upload: ~10MB (game J2ME hiếm khi quá 2MB). */
@@ -35,6 +35,9 @@ public class WebServer {
   /** Aggregate usage counters (visits/online/merges), persisted to stats.json. */
   static final StatsStore STATS = StatsStore.loadDefault();
 
+  /** Async merge jobs (one worker per pool slot, bounded FIFO queue). */
+  static final JobManager JOBS = new JobManager(MERGE_POOL, STATS);
+
   public static Javalin start(int port) {
     Javalin app =
         Javalin.create(
@@ -46,7 +49,9 @@ public class WebServer {
               config.staticFiles.add("/web", Location.CLASSPATH);
               config.spaRoot.addFile("/", "/web/index.html");
               config.routes.get("/api/health", WebServer::health);
-              config.routes.post("/api/merge", WebServer::merge);
+              config.routes.post("/api/merge", WebServer::submitJob);
+              config.routes.get("/api/jobs/{id}", WebServer::jobStatus);
+              config.routes.get("/api/jobs/{id}/download", WebServer::jobDownload);
               config.routes.post("/api/ping", WebServer::ping);
               config.routes.get("/api/stats", WebServer::stats);
             });
@@ -81,23 +86,8 @@ public class WebServer {
     ctx.json(STATS.snapshot());
   }
 
-  static void merge(Context ctx) throws Exception {
-    URLClassLoader slot = MERGE_POOL.borrow();
-    if (slot == null) {
-      ctx.status(429);
-      ctx.header("Retry-After", "5");
-      ctx.json(Map.of("error", "server busy, please retry in a few seconds"));
-      return;
-    }
-    long t0 = System.currentTimeMillis();
-    try {
-      mergeInSlot(ctx, slot, t0);
-    } finally {
-      MERGE_POOL.release(slot);
-    }
-  }
-
-  static void mergeInSlot(Context ctx, URLClassLoader slot, long t0) throws Exception {
+  /** Validates the upload, queues a merge job, returns 202 {"jobId":...} (or 429 when full). */
+  static void submitJob(Context ctx) throws Exception {
     UploadedFile game = ctx.uploadedFile("game");
     if (game == null || game.size() == 0) {
       ctx.status(400).json(Map.of("error", "missing file field 'game'"));
@@ -134,36 +124,45 @@ public class WebServer {
       return;
     }
 
-    List<byte[]> jars = new ArrayList<>();
-    jars.add(data);
-    List<String> names = new ArrayList<>();
-    names.add(origName);
-    byte[] result;
+    JobManager.Job job;
     try {
-      result = MergePool.merge(slot, jars, names, copies);
-    } catch (Exception e) {
-      String msg = e.getMessage() == null ? e.toString() : e.getMessage();
-      ctx.status(422).json(Map.of("error", "merge failed: " + msg));
-      System.out.println("[web] merge failed: " + e);
+      job = JOBS.submit(data, origName, copies);
+    } catch (RejectedExecutionException e) {
+      ctx.status(429);
+      ctx.header("Retry-After", "5");
+      ctx.json(Map.of("error", "server busy, please retry in a few seconds"));
       return;
     }
-    String outName = MergerCLI.deriveOutputName(origName, copies);
-    STATS.countMerge();
+    ctx.status(202).json(Map.of("jobId", job.id, "queued", JOBS.queuedAhead(job)));
+  }
+
+  static void jobStatus(Context ctx) {
+    JobManager.Job job = JOBS.get(ctx.pathParam("id"));
+    if (job == null) {
+      ctx.status(404).json(Map.of("error", "unknown or expired job"));
+      return;
+    }
+    ctx.json(job.snapshot(JOBS.queuedAhead(job)));
+  }
+
+  static void jobDownload(Context ctx) {
+    JobManager.Job job = JOBS.get(ctx.pathParam("id"));
+    if (job == null) {
+      ctx.status(404).json(Map.of("error", "unknown or expired job"));
+      return;
+    }
+    if (job.status == JobManager.Status.QUEUED || job.status == JobManager.Status.RUNNING) {
+      ctx.status(409).json(Map.of("error", "job not ready, try again"));
+      return;
+    }
+    if (job.status == JobManager.Status.ERROR || job.result == null) {
+      String msg = job.error.isEmpty() ? "merge failed" : job.error;
+      ctx.status(422).json(Map.of("error", "merge failed: " + msg));
+      return;
+    }
     ctx.contentType("application/java-archive");
-    ctx.header("Content-Disposition", "attachment; filename=\"" + outName + "\"");
-    ctx.result(result);
-    System.out.println(
-        "[web] merged "
-            + origName
-            + " x"
-            + copies
-            + " -> "
-            + outName
-            + " ("
-            + result.length
-            + " bytes, "
-            + (System.currentTimeMillis() - t0)
-            + " ms)");
+    ctx.header("Content-Disposition", "attachment; filename=\"" + job.outName + "\"");
+    ctx.result(job.result);
   }
 
   static byte[] readAll(InputStream in) throws Exception {

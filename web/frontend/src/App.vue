@@ -70,8 +70,20 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
             <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
           </svg>
-          {{ busy ? 'Đang ghép...' : 'Bắt đầu ghép' }}
+          {{ busy ? busyLabel : 'Bắt đầu ghép' }}
         </button>
+
+        <!-- Progress -->
+        <div v-if="prog.status === 'queued' || prog.status === 'running'" class="mt-3">
+          <div class="flex justify-between gap-2 text-xs text-mutetext font-mono mb-1">
+            <span class="break-all">{{ prog.status === 'queued' ? 'Đang xếp hàng, phía trước còn ' + prog.queued + ' việc' : ('Đang xử lý: ' + (prog.current || '...')) }}</span>
+            <span class="shrink-0">{{ pctText }}</span>
+          </div>
+          <div class="h-2 rounded-full bg-white/10 overflow-hidden">
+            <div class="h-full bg-accent transition-all duration-300" :style="{ width: pct + '%' }"></div>
+          </div>
+          <p v-if="prog.total" class="mt-1 text-xs text-mutetext font-mono">{{ prog.done }}/{{ prog.total }} class</p>
+        </div>
 
         <!-- Status -->
         <div aria-live="polite">
@@ -134,7 +146,10 @@ export default {
       dragging: false,
       sid: '',
       stats: { visits: 0, online: 0, merges: 0 },
-      statsTimer: 0
+      statsTimer: 0,
+      jobId: '',
+      prog: { status: '', done: 0, total: 0, current: '', queued: 0 },
+      pollTimer: 0
     }
   },
   mounted() {
@@ -144,8 +159,22 @@ export default {
   },
   beforeUnmount() {
     if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = 0 }
+    this.stopPoll()
   },
   computed: {
+    pct() {
+      if (!this.prog.total) return this.prog.status === 'running' ? 3 : 0
+      return Math.min(100, Math.floor(this.prog.done * 100 / this.prog.total))
+    },
+    pctText() {
+      if (!this.prog.total) return this.prog.status === 'queued' ? 'chờ' : '...'
+      return this.pct + '%'
+    },
+    busyLabel() {
+      if (this.prog.status === 'queued') return 'Đang xếp hàng...'
+      if (this.prog.total) return this.pct + '%'
+      return 'Đang ghép...'
+    },
     outName() {
       if (!this.file) return ''
       const base = this.file.name.replace(/\.jar$/i, '')
@@ -196,7 +225,9 @@ export default {
       this.file = f
     },
     clear() {
+      this.stopPoll()
       this.file = null; this.error = ''; this.done = ''; this.hint = ''
+      this.prog = { status: '', done: 0, total: 0, current: '', queued: 0 }
       this.revokeBlob()
     },
     step(d) { this.setCopies((parseInt(this.copiesText, 10) || 6) + d) },
@@ -226,38 +257,73 @@ export default {
       a.download = this.done
       a.click()
     },
+    stopPoll() {
+      if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = 0 }
+    },
     async merge() {
       if (!this.file || this.busy) return
+      this.stopPoll()
       this.busy = true; this.error = ''; this.done = ''
+      this.prog = { status: '', done: 0, total: 0, current: '', queued: 0 }
       const copies = this.clampedCopies
       this.setCopies(copies)
-      this.hint = 'Đang ghép ' + this.file.name + ' x' + copies + ' ...'
+      this.hint = 'Đang gửi ' + this.file.name + ' ...'
       try {
         const fd = new FormData()
         fd.append('game', this.file, this.file.name)
         fd.append('copies', String(copies))
         const res = await fetch('/api/merge', { method: 'POST', body: fd })
-        if (!res.ok) {
-          let msg = 'HTTP ' + res.status
-          try { msg = (await res.json()).error || msg } catch (e) { /* keep */ }
-          throw new Error(msg)
+        if (res.status === 202) {
+          const j = await res.json()
+          this.jobId = j.jobId
+          this.prog.status = 'queued'
+          this.prog.queued = j.queued || 0
+          this.hint = ''
+          this.pollTimer = setInterval(this.pollJob, 500)
+          this.pollJob()
+          return
         }
-        const cd = res.headers.get('Content-Disposition') || ''
-        const m = /filename="([^"]+)"/.exec(cd)
-        const name = m ? m[1] : this.outName
-        const blob = await res.blob()
-        this.revokeBlob()
-        this.blobUrl = URL.createObjectURL(blob)
-        this.done = name
-        this.hint = ''
-        this.downloadAgain()
-        this.ping()
+        let msg = 'HTTP ' + res.status
+        try { msg = (await res.json()).error || msg } catch (e) { /* keep */ }
+        throw new Error(msg)
       } catch (e) {
         this.error = 'Lỗi: ' + (e && e.message ? e.message : e)
         this.hint = ''
-      } finally {
         this.busy = false
       }
+    },
+    async pollJob() {
+      try {
+        const res = await fetch('/api/jobs/' + this.jobId)
+        if (!res.ok) throw new Error(res.status === 404 ? 'job hết hạn, gửi lại file' : 'HTTP ' + res.status)
+        const j = await res.json()
+        this.prog = { status: j.status, done: j.done || 0, total: j.total || 0, current: j.current || '', queued: j.queued || 0 }
+        if (j.status === 'done') { this.stopPoll(); await this.fetchResult() }
+        else if (j.status === 'error') { this.stopPoll(); throw new Error(j.error || 'merge failed') }
+      } catch (e) {
+        this.stopPoll()
+        this.error = 'Lỗi: ' + (e && e.message ? e.message : e)
+        this.busy = false
+      }
+    },
+    async fetchResult() {
+      const res = await fetch('/api/jobs/' + this.jobId + '/download')
+      if (!res.ok) {
+        let msg = 'HTTP ' + res.status
+        try { msg = (await res.json()).error || msg } catch (e) { /* keep */ }
+        throw new Error(msg)
+      }
+      const cd = res.headers.get('Content-Disposition') || ''
+      const m = /filename="([^"]+)"/.exec(cd)
+      const name = m ? m[1] : this.outName
+      const blob = await res.blob()
+      this.revokeBlob()
+      this.blobUrl = URL.createObjectURL(blob)
+      this.done = name
+      this.hint = ''
+      this.downloadAgain()
+      this.ping()
+      this.busy = false
     }
   }
 }

@@ -34,8 +34,12 @@ curl localhost:8080/api/health
 ## Giới hạn bản web
 
 - Upload ~10MB, Copies tối đa 25 (bằng desktop).
+- `POST /api/merge` trả `202 {"jobId":...}` (job async), poll tiến độ
+  `GET /api/jobs/:id` → `{status, done, total, current}`, tải file ở
+  `GET /api/jobs/:id/download`. Kết quả giữ trong RAM 10 phút rồi xóa.
 - Merge chạy song song tối đa 10 slot (theo CPU), mỗi slot cách ly ClassLoader
-  riêng vì transformer core không thread-safe; quá tải trả 429 + Retry-After.
+  riêng vì transformer core không thread-safe; thừa (10 việc chờ) thì trả
+  429 + Retry-After.
 - Lỗi merge trả JSON `{"error":"..."}` (mã 422) — thường là jar
   obfuscate nặng / thiếu preverify / bytecode sửa ẩu.
 - Thống kê (`GET /api/stats`: online/truy cập/đã ghép) lưu ở
