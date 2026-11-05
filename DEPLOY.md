@@ -34,7 +34,7 @@ curl localhost:8080/api/health
 ## Giới hạn bản web
 
 - Upload ~10MB, Copies tối đa 25 (bằng desktop).
-- Merge chạy song song tối đa 4 slot (theo CPU), mỗi slot cách ly ClassLoader
+- Merge chạy song song tối đa 10 slot (theo CPU), mỗi slot cách ly ClassLoader
   riêng vì transformer core không thread-safe; quá tải trả 429 + Retry-After
   ("server dang ban, thu lai sau vai giay").
 - Lỗi merge trả JSON `{"error":"..."}` (mã 422) — thường là jar

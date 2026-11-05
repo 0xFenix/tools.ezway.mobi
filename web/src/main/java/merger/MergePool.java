@@ -18,7 +18,7 @@ import java.util.concurrent.BlockingQueue;
  * and serves at most one merge at a time. Core stays untouched.
  */
 public class MergePool {
-  static final int SLOTS = Math.min(4, Math.max(1, Runtime.getRuntime().availableProcessors()));
+  static final int SLOTS = Math.min(10, Math.max(1, Runtime.getRuntime().availableProcessors()));
 
   private final BlockingQueue<URLClassLoader> free;
 
